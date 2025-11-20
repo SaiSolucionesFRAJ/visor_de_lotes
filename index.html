@@ -2015,88 +2015,58 @@
                 });
         }
 
-function loadDefaultGLB() {
-    console.log("Iniciando carga automática de múltiples modelos GLB...");
+        function loadDefaultGLB() {
+            console.log("Iniciando carga automática del modelo GLB...");
 
-    const loadingEl = document.getElementById('loading');
-    const loadingText = document.querySelector('.loading-text');
+            const loadingEl = document.getElementById('loading');
+            const loadingText = document.querySelector('.loading-text');
 
-    if (loadingEl) loadingEl.classList.add('active');
-    if (loadingText) loadingText.textContent = 'Cargando modelos 3D...';
+            if (loadingEl) loadingEl.classList.add('active');
+            if (loadingText) loadingText.textContent = 'Cargando modelo 3D...';
 
-    // Array con las rutas de los modelos a cargar
-    const glbPaths = [
-        'ttt/MODELO1.GLB',
-        'ttt/MODELO2.GLB',
-        'ttt/MODELO3.GLB',
-        'ttt/MODELO4.GLB',
-        'ttt/MODELO5.GLB',
-        'ttt/MODELO6.GLB'
-    ];
+            const glbPath = 'img/MODELO.GLB';
 
-    // Array para almacenar los modelos cargados
-    const loadedModels = [];
-    let modelsLoaded = 0;
-    let errors = [];
-    let globalOriginUTM = null; // Origen común para todos los modelos
+            fetch(glbPath)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(arrayBuffer => {
+                    console.log("Archivo GLB cargado exitosamente");
 
-    // Función para cargar un modelo individual
-    function loadSingleModel(glbPath, index) {
-        return fetch(glbPath)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Error HTTP en ${glbPath}: ${response.status} ${response.statusText}`);
-                }
-                return response.arrayBuffer();
-            })
-            .then(arrayBuffer => {
-                console.log(`Archivo ${glbPath} cargado exitosamente`);
+                    // Verificar que THREE.GLTFLoader esté disponible
+                    if (typeof THREE === 'undefined' || !THREE.GLTFLoader) {
+                        throw new Error('La librería THREE.js o GLTFLoader no está cargada');
+                    }
 
-                // Verificar que THREE.GLTFLoader esté disponible
-                if (typeof THREE === 'undefined' || !THREE.GLTFLoader) {
-                    throw new Error('La librería THREE.js o GLTFLoader no está cargada');
-                }
-
-                return new Promise((resolve, reject) => {
                     const loader = new THREE.GLTFLoader();
 
                     loader.parse(arrayBuffer, '', function (gltf) {
-                        const model = gltf.scene;
-                        model.name = `Modelo_${index + 1}`; // Asignar nombre único
+                        if (glbModel3D) {
+                            scene3D.remove(glbModel3D);
+                        }
 
-                        // Calcular el bounding box original DEL MODELO
-                        const bbox = new THREE.Box3().setFromObject(model);
+                        glbModel3D = gltf.scene;
+
+                        // Calcular el bounding box original
+                        const bbox = new THREE.Box3().setFromObject(glbModel3D);
                         const center = bbox.getCenter(new THREE.Vector3());
                         const size = bbox.getSize(new THREE.Vector3());
 
-                        console.log(`${glbPath} - Centro original: X=${center.x.toFixed(2)}, Y=${center.y.toFixed(2)}, Z=${center.z.toFixed(2)}`);
-
                         // Detectar si usa coordenadas UTM (valores grandes)
                         if (Math.abs(center.x) > 10000 || Math.abs(center.z) > 10000) {
-                            
-                            // Guardar el origen UTM del primer modelo como referencia global
-                            if (index === 0 && globalOriginUTM === null) {
-                                globalOriginUTM = {
-                                    x: Math.round(center.x),
-                                    y: Math.round(center.y),
-                                    z: Math.round(center.z)
-                                };
-                                originUTM3D.x = globalOriginUTM.x;
-                                originUTM3D.y = globalOriginUTM.y;
-                                originUTM3D.z = -globalOriginUTM.z; // Z invertido
-                                hasOrigin3D = true;
-                                console.log('Origen UTM global establecido:', globalOriginUTM);
-                            }
+                            // Guardar el origen UTM para referencia
+                            originUTM3D.x = Math.round(center.x);
+                            originUTM3D.y = Math.round(center.y);
+                            originUTM3D.z = Math.round(-center.z); // Z invertido
+                            hasOrigin3D = true;
 
-                            // Calcular el offset relativo al origen global
-                            const offsetX = center.x - globalOriginUTM.x;
-                            const offsetY = center.y - globalOriginUTM.y;
-                            const offsetZ = center.z - globalOriginUTM.z;
+                            console.log('Origen UTM detectado:', originUTM3D);
 
-                            console.log(`${glbPath} - Offset relativo: X=${offsetX.toFixed(2)}, Y=${offsetY.toFixed(2)}, Z=${offsetZ.toFixed(2)}`);
-
-                            // Recentrar el modelo respecto al origen GLOBAL
-                            model.traverse((child) => {
+                            // Recentrar el modelo al origen (0,0,0)
+                            glbModel3D.traverse((child) => {
                                 if (child.isMesh && child.geometry) {
                                     const geometry = child.geometry;
 
@@ -2104,12 +2074,12 @@ function loadDefaultGLB() {
                                     child.updateMatrixWorld(true);
                                     geometry.applyMatrix4(child.matrixWorld);
 
-                                    // Trasladar vértices al origen GLOBAL (no al centro del modelo)
+                                    // Trasladar vértices al origen
                                     const positions = geometry.attributes.position;
                                     for (let i = 0; i < positions.count; i++) {
-                                        positions.setX(i, positions.getX(i) - globalOriginUTM.x);
-                                        positions.setY(i, positions.getY(i) - globalOriginUTM.y);
-                                        positions.setZ(i, positions.getZ(i) - globalOriginUTM.z);
+                                        positions.setX(i, positions.getX(i) - center.x);
+                                        positions.setY(i, positions.getY(i) - center.y);
+                                        positions.setZ(i, positions.getZ(i) - center.z);
                                     }
 
                                     positions.needsUpdate = true;
@@ -2125,19 +2095,16 @@ function loadDefaultGLB() {
                                 }
                             });
 
-                            // El modelo ya está en su posición correcta relativa
-                            model.position.set(0, 0, 0);
-                            model.rotation.set(0, 0, 0);
-                            model.scale.set(1, 1, 1);
-
+                            glbModel3D.position.set(0, 0, 0);
+                            glbModel3D.rotation.set(0, 0, 0);
+                            glbModel3D.scale.set(1, 1, 1);
                         } else {
-                            // Sin coordenadas UTM, mantener posición original
-                            model.position.set(0, 0, 0);
-                            if (index === 0) hasOrigin3D = false;
+                            glbModel3D.position.set(0, 0, 0);
+                            hasOrigin3D = false;
                         }
 
                         // Configurar sombras y materiales
-                        model.traverse((child) => {
+                        glbModel3D.traverse((child) => {
                             if (child.isMesh) {
                                 child.castShadow = true;
                                 child.receiveShadow = true;
@@ -2151,109 +2118,64 @@ function loadDefaultGLB() {
                             }
                         });
 
-                        resolve(model);
+                        scene3D.add(glbModel3D);
+
+                        // Calcular nuevo bounding box después de recentrar
+                        const newBbox = new THREE.Box3().setFromObject(glbModel3D);
+                        const newCenter = newBbox.getCenter(new THREE.Vector3());
+                        const newSize = newBbox.getSize(new THREE.Vector3());
+
+                        // Posicionar cámara
+                        const maxDim = Math.max(newSize.x, newSize.y, newSize.z);
+                        const fov = camera3D.fov * (Math.PI / 180);
+                        let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                        cameraZ *= 2;
+
+                        camera3D.position.set(newCenter.x + cameraZ, newCenter.y + cameraZ / 2, newCenter.z + cameraZ);
+                        camera3D.lookAt(newCenter);
+                        controls3D.target.copy(newCenter);
+                        controls3D.update();
+
+                        if (loadingEl) loadingEl.classList.remove('active');
+                        showNotification('Modelo 3D cargado automáticamente', 'success');
+
+                        // IMPORTANTE: Procesar lotes en 3D si ya están cargados
+                        if (Object.keys(lotesData).length > 0) {
+                            // Invalidar caché al cargar nuevo modelo
+                            projectionCache3D = null;
+                            lastModelHash = null;
+
+                            // Esperar un frame para asegurar que el modelo esté completamente cargado
+                            requestAnimationFrame(() => {
+                                console.log('Procesando lotes en 3D después de carga automática...');
+                                // No llamar a processLotesIn3D aquí, se procesará al cambiar a vista 3D
+                            });
+                        }
 
                     }, function (error) {
-                        reject(error);
+                        if (loadingEl) loadingEl.classList.remove('active');
+                        showNotification('Error al cargar modelo 3D automático: ' + error.message, 'error');
+                        console.error(error);
                     });
+                })
+                .catch(error => {
+                    console.error('Error en la carga automática del GLB:', error);
+
+                    if (loadingEl) loadingEl.classList.remove('active');
+
+                    let errorMessage = 'No se pudo cargar el modelo 3D. ';
+
+                    if (error.message.includes('HTTP')) {
+                        errorMessage += 'Verifica que el archivo existe en img/MODELO.GLB';
+                    } else if (error.message.includes('GLTFLoader')) {
+                        errorMessage += 'Asegúrate de que la librería GLTFLoader está incluida.';
+                    } else {
+                        errorMessage += 'El archivo puede estar corrupto.';
+                    }
+
+                    showNotification(errorMessage, 'info');
                 });
-            })
-            .catch(error => {
-                console.error(`Error al cargar ${glbPath}:`, error);
-                errors.push({ path: glbPath, error: error.message });
-                return null; // Retornar null para continuar con otros modelos
-            });
-    }
-
-    // Cargar todos los modelos en SECUENCIA para establecer el origen correcto
-    async function loadAllModels() {
-        const models = [];
-        
-        for (let i = 0; i < glbPaths.length; i++) {
-            const model = await loadSingleModel(glbPaths[i], i);
-            models.push(model);
         }
-        
-        return models;
-    }
-
-    loadAllModels()
-        .then(models => {
-            // Remover modelos anteriores si existen
-            if (glbModel3D) {
-                scene3D.remove(glbModel3D);
-            }
-
-            // Crear un grupo para contener todos los modelos
-            const modelGroup = new THREE.Group();
-            modelGroup.name = 'ModelosGrupo';
-
-            // Agregar modelos válidos al grupo
-            models.forEach(model => {
-                if (model !== null) {
-                    modelGroup.add(model);
-                    modelsLoaded++;
-                }
-            });
-
-            if (modelsLoaded > 0) {
-                glbModel3D = modelGroup;
-                scene3D.add(glbModel3D);
-
-                // Calcular bounding box del grupo completo
-                const groupBbox = new THREE.Box3().setFromObject(glbModel3D);
-                const groupCenter = groupBbox.getCenter(new THREE.Vector3());
-                const groupSize = groupBbox.getSize(new THREE.Vector3());
-
-                console.log('Bounding box del grupo completo:');
-                console.log(`  Centro: X=${groupCenter.x.toFixed(2)}, Y=${groupCenter.y.toFixed(2)}, Z=${groupCenter.z.toFixed(2)}`);
-                console.log(`  Tamaño: X=${groupSize.x.toFixed(2)}, Y=${groupSize.y.toFixed(2)}, Z=${groupSize.z.toFixed(2)}`);
-
-                // Posicionar cámara
-                const maxDim = Math.max(groupSize.x, groupSize.y, groupSize.z);
-                const fov = camera3D.fov * (Math.PI / 180);
-                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-                cameraZ *= 2;
-
-                camera3D.position.set(groupCenter.x + cameraZ, groupCenter.y + cameraZ / 2, groupCenter.z + cameraZ);
-                camera3D.lookAt(groupCenter);
-                controls3D.target.copy(groupCenter);
-                controls3D.update();
-
-                if (loadingEl) loadingEl.classList.remove('active');
-                
-                let message = `${modelsLoaded} modelo(s) 3D cargado(s) exitosamente`;
-                if (errors.length > 0) {
-                    message += `. ${errors.length} modelo(s) no se pudieron cargar`;
-                }
-                showNotification(message, modelsLoaded > 0 ? 'success' : 'warning');
-
-                // Mostrar errores específicos en consola
-                if (errors.length > 0) {
-                    console.warn('Errores al cargar modelos:');
-                    errors.forEach(err => console.warn(`- ${err.path}: ${err.error}`));
-                }
-
-                // Procesar lotes en 3D si ya están cargados
-                if (Object.keys(lotesData).length > 0) {
-                    projectionCache3D = null;
-                    lastModelHash = null;
-
-                    requestAnimationFrame(() => {
-                        console.log('Procesando lotes en 3D después de carga automática...');
-                    });
-                }
-            } else {
-                if (loadingEl) loadingEl.classList.remove('active');
-                showNotification('No se pudo cargar ningún modelo 3D', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error general en la carga de modelos:', error);
-            if (loadingEl) loadingEl.classList.remove('active');
-            showNotification('Error crítico al cargar los modelos 3D', 'error');
-        });
-}
 
 
 
@@ -5235,5 +5157,6 @@ function loadDefaultGLB() {
 </body>
 
 </html>
+
 
 
