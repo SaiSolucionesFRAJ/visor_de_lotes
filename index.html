@@ -7,6 +7,8 @@
     <title>Gestor de Lotes de Urbanización - Sistema de Ventas</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
     <style>
         * {
             margin: 0;
@@ -914,6 +916,114 @@
             }
         }
 
+        .progress-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(26, 43, 74, 0.95) 0%, rgba(44, 62, 95, 0.95) 100%);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            backdrop-filter: blur(10px);
+        }
+
+        .progress-overlay.active {
+            display: flex;
+        }
+
+        .progress-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .progress-icon {
+            font-size: 64px;
+            background: linear-gradient(135deg, var(--sai-purple) 0%, var(--sai-light-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            animation: pulse3D 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse3D {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+        }
+
+        .progress-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--sai-dark-blue);
+            margin-bottom: 25px;
+            letter-spacing: 0.3px;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 12px;
+            background: var(--sai-light-gray);
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--sai-purple) 0%, var(--sai-light-purple) 50%, var(--sai-orange) 100%);
+            background-size: 200% 100%;
+            border-radius: 20px;
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: progressShine 2s linear infinite;
+        }
+
+        @keyframes progressShine {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .progress-text {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--sai-purple);
+            margin-bottom: 10px;
+        }
+
+        .progress-details {
+            font-size: 14px;
+            color: var(--sai-text-light);
+            font-weight: 500;
+        }
+
+        .progress-details span {
+            font-weight: 700;
+            color: var(--sai-text);
+        }
+
         .notification {
             position: fixed;
             top: 90px;
@@ -1132,6 +1242,21 @@
             }
         }
     </style>
+
+        <script type="text/javascript">
+        // Espera a que el DOM esté completamente cargado
+        document.addEventListener("DOMContentLoaded", function() {
+            // Define el ancho máximo para considerar un dispositivo como móvil
+            // 768px es un punto de ruptura (breakpoint) común para tabletas/móviles
+            var anchoMaximoMovil = 768; 
+
+            if (window.innerWidth <= anchoMaximoMovil) {
+                // Si el ancho de la ventana es menor o igual al máximo móvil,
+                // redirige al usuario a la versión para móviles.
+                window.location.href = "movil.html";
+            }
+        });
+    </script>
 </head>
 
 <body>
@@ -1149,11 +1274,9 @@
                     <button class="view-button active" data-view="map">Mapa</button>
                     <button class="view-button" data-view="satellite">Satélite</button>
                     <button class="view-button" data-view="terrain">Relieve</button>
+                    <button class="view-button" data-view="3d">3D</button>
                 </div>
                 <div class="map-tools">
-                    <button class="tool-button" id="import-dxf-tool" title="Importar DXF">
-                        <i class="fas fa-file-import"></i>
-                    </button>
                     <button class="tool-button" id="zoom-in-tool" title="Acercar">
                         <i class="fas fa-search-plus"></i>
                     </button>
@@ -1169,6 +1292,36 @@
 
         <main>
             <div id="map-viewer"></div>
+            <div id="viewer-3d" style="display: none; width: 100%; height: 100%; position: relative;">
+                <canvas id="canvas-3d"></canvas>
+                <div class="coordinates-3d"
+                    style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, var(--sai-dark-blue) 0%, var(--sai-blue) 100%); color: white; padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; box-shadow: var(--shadow-lg); z-index: 1000; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1);">
+                    X: 0.00, Y: 0.00, Z: 0.00
+                </div>
+
+                <!-- Controles de la vista 3D -->
+                <div class="controls-3d"
+                    style="position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.9); padding: 20px; border-radius: 10px; color: white; max-width: 380px; backdrop-filter: blur(10px); z-index: 100; max-height: 90vh; overflow-y: auto; border: 1px solid rgba(76, 175, 80, 0.3); display: none;">
+                    <h3 style="margin-bottom: 15px; color: #4CAF50;">🌐 Controles 3D</h3>
+
+                    <div class="control-group-3d" style="margin-bottom: 15px;">
+                        <button id="reset-camera-3d"
+                            style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 13px; width: 100%; margin-bottom: 8px;">🔄
+                            Resetear Cámara</button>
+                    </div>
+
+                    <div class="control-group-3d">
+                        <button id="take-screenshot-3d"
+                            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 13px; width: 100%; margin-bottom: 8px;">📸
+                            Captura de Pantalla</button>
+                    </div>
+                </div>
+
+                <button id="toggle-controls-3d"
+                    style="position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.9); color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; z-index: 101; font-size: 16px;">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
             <div class="coordinates">Lat: 0.0000, Lng: 0.0000</div>
 
             <!-- Leyenda de estados -->
@@ -1191,6 +1344,9 @@
 
         <aside>
             <div class="sidebar-shadow" id="sidebar-shadow"></div>
+            <div id="scroll-indicator" class="scroll-indicator">
+                <i class="fas fa-chevron-down"></i>
+            </div>
 
             <div class="sidebar-content" id="sidebar-content">
                 <!-- Panel de Datos de Lote -->
@@ -1217,27 +1373,22 @@
                     </div>
                 </div>
 
-                <div class="panel">
-                    <div class="panel-title">
-                        <i class="fas fa-sliders-h"></i> Controles
-                    </div>
-                    <button class="control-button primary" id="import-dxf-button">
-                        <i class="fas fa-file-import"></i>
-                        <span>Importar DXF</span>
-                    </button>
-                    <button class="control-button secondary" id="clear-button">
-                        <i class="fas fa-eraser"></i>
-                        <span>Limpiar Vista</span>
-                    </button>
-                </div>
+                <!-- Panel de controles removido - carga automática activada -->
 
                 <div class="panel">
                     <div class="panel-title">
-                        <i class="fas fa-handshake"></i> Reservas Activas
+                        <i class="fab fa-whatsapp"></i> Contacto
                     </div>
-                    <div class="reservations-list" id="reservations-list">
-                        <div class="no-data-message">No hay reservas activas</div>
+                    <div class="data-item">
+                        <span class="data-label">WhatsApp:</span>
+                        <span class="data-value" style="color: #25D366;">+591 73324084</span>
                     </div>
+                    <button class="control-button success"
+                        onclick="window.open('https://wa.me/59173324084?text=Hola,%20necesito%20información%20sobre%20los%20lotes', '_blank')"
+                        style="margin-top: 10px;">
+                        <i class="fab fa-whatsapp"></i>
+                        <span>Contactar por WhatsApp</span>
+                    </button>
                 </div>
 
                 <div class="panel">
@@ -1277,52 +1428,7 @@
         </aside>
     </div>
 
-    <!-- Modal de Reserva -->
-    <div class="dxf-modal hidden" id="reservation-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="modal-title">Reservar Lote</span>
-                <button class="modal-close" id="reservation-modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="input-group">
-                    <label class="input-label">Lote a Reservar</label>
-                    <input type="text" class="coordinate-input" id="reservation-lote" readonly>
-                </div>
-                <div class="input-group">
-                    <label class="input-label">Nombre del Cliente *</label>
-                    <input type="text" class="coordinate-input" id="reservation-name"
-                        placeholder="Ingrese nombre completo">
-                </div>
-                <div class="input-group">
-                    <label class="input-label">Teléfono *</label>
-                    <input type="tel" class="coordinate-input" id="reservation-phone" placeholder="Ingrese teléfono">
-                </div>
-                <div class="input-group">
-                    <label class="input-label">Email</label>
-                    <input type="email" class="coordinate-input" id="reservation-email" placeholder="Ingrese email">
-                </div>
-                <div class="input-group">
-                    <label class="input-label">Precio de Venta (USD)</label>
-                    <input type="number" class="coordinate-input" id="reservation-price" placeholder="0.00" step="0.01">
-                </div>
-                <div class="input-group">
-                    <label class="input-label">Monto Reserva (USD)</label>
-                    <input type="number" class="coordinate-input" id="reservation-amount" placeholder="0.00"
-                        step="0.01">
-                </div>
-                <div class="input-group">
-                    <label class="input-label">Notas Adicionales</label>
-                    <textarea class="coordinate-input" id="reservation-notes" rows="2"
-                        placeholder="Ingrese notas adicionales"></textarea>
-                </div>
-            </div>
-            <div class="modal-buttons">
-                <button class="modal-button secondary" id="reservation-cancel">Cancelar</button>
-                <button class="modal-button primary" id="reservation-confirm">Confirmar Reserva</button>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Modal DXF -->
     <div class="dxf-modal hidden" id="dxf-modal">
@@ -1379,9 +1485,66 @@
         </div>
     </div>
 
+    <!-- Modal Excel -->
+    <div class="dxf-modal hidden" id="excel-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Importar archivo Excel</span>
+                <button class="modal-close" id="excel-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="file-upload-area" id="excel-upload-area">
+                    <div class="upload-icon"><i class="fas fa-file-excel"></i></div>
+                    <div class="upload-text">Arrastra tu archivo Excel aquí</div>
+                    <div class="upload-hint">o haz clic para seleccionar (formatos: .xlsx, .xls)</div>
+                </div>
+                <input type="file" id="excel-file-input" accept=".xlsx,.xls" />
+                <div class="coordinate-inputs">
+                    <div class="input-group">
+                        <label class="input-label">Fila de encabezados</label>
+                        <input type="number" class="coordinate-input" id="header-row" value="1" min="1">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Columna de Código de Lote</label>
+                        <input type="text" class="coordinate-input" id="lote-code-column" value="A" placeholder="Ej: A">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Columna de Precio</label>
+                        <input type="text" class="coordinate-input" id="price-column" value="D" placeholder="Ej: D">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Columna de Estado</label>
+                        <input type="text" class="coordinate-input" id="status-column" value="E" placeholder="Ej: E">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-button secondary" id="excel-cancel-button">Cancelar</button>
+                <button class="modal-button primary" id="excel-process-button" disabled>Procesar Excel</button>
+            </div>
+        </div>
+    </div>
+
     <div class="loading-overlay" id="loading">
         <div class="spinner"></div>
         <div class="loading-text">Procesando archivo...</div>
+    </div>
+
+    <!-- Barra de progreso para cálculos 3D -->
+    <div class="progress-overlay" id="progress-overlay">
+        <div class="progress-container">
+            <div class="progress-icon">
+                <i class="fas fa-cube"></i>
+            </div>
+            <div class="progress-title">Descargando Modelo 3D, Espere por favor..</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="progress-text" id="progress-text">Inicializando... 0%</div>
+            <div class="progress-details" id="progress-details">
+                <span id="progress-lotes">0</span> de <span id="progress-total">0</span> lotes procesados
+            </div>
+        </div>
     </div>
 
     <div class="notification" id="notification">
@@ -1396,6 +1559,12 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/src/core/Util.js"></script>
+
 
     <script>
         // Parser DXF
@@ -1604,82 +1773,646 @@
         let dxfData = null;
         let allBounds = null;
         let reservations = [];
+        let autoLoadAttempted = false;
+        let excelData = null;
+        let excelLoaded = false;
+        // Variables para la vista 3D
+        let scene3D, camera3D, renderer3D, controls3D;
+        let glbModel3D, dxfGroup3D;
+        let gridHelper3D, axesHelper3D;
+        let raycaster3D = new THREE.Raycaster();
+        let layers3D = {};
+        let originUTM3D = { x: 0, y: 0, z: 0 };
+        let hasOrigin3D = false;
+        let is3DViewActive = false;
+        let currentLayer = null; // Variable para la capa actual del mapa
+        // **AGREGAR ESTAS NUEVAS VARIABLES:**
+        let projectionCache3D = null; // Caché de proyecciones calculadas
+        let lastModelHash = null; // Hash del modelo para detectar cambios
 
         // Inicialización
         document.addEventListener('DOMContentLoaded', function () {
+            // Verificar que los elementos necesarios existan antes de inicializar
+            const mapViewer = document.getElementById('map-viewer');
+            const sidebarContent = document.getElementById('sidebar-content');
+            const scrollIndicator = document.getElementById('scroll-indicator');
+
+            if (!mapViewer) {
+                console.error('Elemento map-viewer no encontrado');
+                return;
+            }
+
+            if (!sidebarContent || !scrollIndicator) {
+                console.warn('Elementos de sidebar no encontrados, algunas funciones podrían no estar disponibles');
+            }
+
+            loadDefaultDXF();
             initMap();
             setupEventListeners();
-            setupScrollBehavior();
-            loadReservations();
-            
-            // Cargar automáticamente el archivo DXF al iniciar
-            setTimeout(() => {
-                loadDefaultDXF();
-            }, 1000);
+
+            // Solo llamar a setupScrollBehavior si los elementos existen
+            if (sidebarContent && scrollIndicator) {
+                setupScrollBehavior();
+            }
+
+            // Inicializar la vista 3D (pero no mostrarla hasta que se solicite)
+            init3D();
         });
 
+
         function loadDefaultDXF() {
+            // Evitar múltiples intentos de carga
+            if (window.autoLoadAttempted) return;
+            window.autoLoadAttempted = true;
+
+            console.log("Iniciando carga automática del archivo DXF...");
+
             // Establecer valores predeterminados para zona 19 sur
-            document.getElementById('coord-system').value = 'utm';
-            document.getElementById('utm-zone').value = '19';
-            document.getElementById('utm-hemisphere').value = 'south';
-            
+            const coordSystem = document.getElementById('coord-system');
+            const utmZone = document.getElementById('utm-zone');
+            const utmHemisphere = document.getElementById('utm-hemisphere');
+
+            if (!coordSystem || !utmZone || !utmHemisphere) {
+                console.error('Elementos del formulario no encontrados');
+                return;
+            }
+
+            coordSystem.value = 'utm';
+            utmZone.value = '19';
+            utmHemisphere.value = 'south';
+
             // Mostrar los campos apropiados
-            document.getElementById('utm-zone-group').style.display = 'block';
-            document.getElementById('utm-hemisphere-group').style.display = 'block';
-            document.getElementById('ref-lat-group').style.display = 'none';
-            document.getElementById('ref-lng-group').style.display = 'none';
-            document.getElementById('scale-group').style.display = 'none';
-            
-            // Cargar el archivo DXF
-            fetch('PLANO DE URB PARA VISOR.dxf')
+            const elementsToShow = ['utm-zone-group', 'utm-hemisphere-group'];
+            const elementsToHide = ['ref-lat-group', 'ref-lng-group', 'scale-group'];
+
+            elementsToShow.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'block';
+            });
+
+            elementsToHide.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
+            // Mostrar indicador de carga
+            const loadingEl = document.getElementById('loading');
+            const loadingText = document.querySelector('.loading-text');
+
+            if (loadingEl) loadingEl.classList.add('active');
+            if (loadingText) loadingText.textContent = 'Cargando plano urbanización...';
+
+            // Intentar cargar el archivo DXF
+            const dxfPath = 'img/VISOR.dxf';
+
+            // Añadir manejo de errores más específico
+            fetch(dxfPath)
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error('No se pudo cargar el archivo DXF');
+                        throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
                     }
                     return response.text();
                 })
                 .then(dxfText => {
-                    try {
-                        if (typeof DxfParser === 'undefined') {
-                            showNotification('La librería DXF Parser no está cargada. Por favor recarga la página.', 'error');
-                            return;
-                        }
+                    console.log("Archivo DXF cargado exitosamente");
 
-                        const parser = new DxfParser();
-                        dxfData = parser.parseSync(dxfText);
-                        
-                        // Procesar el archivo DXF automáticamente
-                        document.getElementById('loading').classList.add('active');
-                        
-                        setTimeout(() => {
-                            try {
-                                processDXF(dxfData);
-                                document.getElementById('loading').classList.remove('active');
-                                showNotification('Archivo DXF cargado automáticamente', 'success');
-                            } catch (error) {
-                                console.error('Error procesando DXF:', error);
-                                showNotification('Error al procesar el archivo DXF', 'error');
-                                document.getElementById('loading').classList.remove('active');
-                            }
-                        }, 500);
-                    } catch (err) {
-                        console.error('Error completo:', err);
-                        showNotification('Error al leer el archivo DXF: ' + err.message, 'error');
+                    // Verificar que el texto no esté vacío
+                    if (!dxfText || dxfText.trim().length === 0) {
+                        throw new Error('El archivo DXF está vacío');
                     }
+
+                    // Verificar que DxfParser esté disponible
+                    if (typeof DxfParser === 'undefined') {
+                        throw new Error('La librería DXF Parser no está cargada');
+                    }
+
+                    const parser = new DxfParser();
+                    const parsedData = parser.parseSync(dxfText);
+
+                    // Validar que el parseo fue exitoso
+                    if (!parsedData || !parsedData.entities) {
+                        throw new Error('El archivo DXF no contiene datos válidos');
+                    }
+
+                    console.log("Archivo DXF parseado exitosamente");
+                    console.log(`Entidades encontradas: ${parsedData.entities.length}`);
+
+                    // Guardar en variable global si es necesario
+                    if (typeof window.dxfData !== 'undefined') {
+                        window.dxfData = parsedData;
+                    }
+
+                    // Procesar el archivo DXF con manejo de errores
+                    try {
+                        processDXF(parsedData);
+                    } catch (error) {
+                        console.error('Error procesando DXF:', error);
+                        showNotification('Error al procesar el archivo DXF: ' + error.message, 'error');
+                    }
+
+                    if (loadingEl) loadingEl.classList.remove('active');
+                    showNotification('Archivo DXF cargado automáticamente', 'success');
+
+                    // DESPUÉS DE CARGAR EL DXF, CARGAR EL EXCEL Y EL MODELO 3D AUTOMÁTICAMENTE
+                    setTimeout(() => {
+                        loadDefaultExcel();
+                        loadDefaultGLB();  // <-- AGREGAR ESTA LÍNEA
+                    }, 1000);
                 })
                 .catch(error => {
-                    console.error('Error al cargar el archivo DXF:', error);
-                    showNotification('No se pudo cargar el archivo DXF predeterminado', 'error');
+                    console.error('Error en la carga automática del DXF:', error);
+
+                    if (loadingEl) loadingEl.classList.remove('active');
+
+                    // Mensaje más específico según el tipo de error
+                    let errorMessage = 'No se pudo cargar el archivo DXF. ';
+
+                    if (error.message.includes('HTTP')) {
+                        errorMessage += 'Verifica que el archivo existe en img/VISOR.dxf';
+                    } else if (error.message.includes('Parser')) {
+                        errorMessage += 'Asegúrate de que la librería DXF Parser está incluida.';
+                    } else if (error.message.includes('válidos')) {
+                        errorMessage += 'El archivo parece estar corrupto o vacío.';
+                    } else {
+                        errorMessage += 'Por favor, impórtelo manualmente.';
+                    }
+
+                    showNotification(errorMessage, 'error');
                 });
+        }
+
+        function loadDefaultExcel() {
+            console.log("Iniciando carga automática del archivo Excel...");
+
+            // Verificar que los lotes estén cargados
+            if (Object.keys(lotesData).length === 0) {
+                console.warn('No hay lotes cargados. No se puede procesar el Excel.');
+                showNotification('Primero debes cargar el archivo DXF', 'error');
+                return;
+            }
+
+            const loadingEl = document.getElementById('loading');
+            const loadingText = document.querySelector('.loading-text');
+
+            if (loadingEl) loadingEl.classList.add('active');
+            if (loadingText) loadingText.textContent = 'Cargando datos de Excel...';
+
+            const excelPath = 'img/DATOS.xlsx';
+
+            fetch(excelPath)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(arrayBuffer => {
+                    console.log("Archivo Excel cargado exitosamente");
+
+                    // Verificar que XLSX esté disponible
+                    if (typeof XLSX === 'undefined') {
+                        throw new Error('La librería SheetJS (XLSX) no está cargada');
+                    }
+
+                    const data = new Uint8Array(arrayBuffer);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    // Tomar la primera hoja
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+
+                    // Convertir a array de arrays
+                    excelData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    console.log("Archivo Excel parseado exitosamente");
+                    console.log(`Filas encontradas: ${excelData.length}`);
+
+                    // Establecer configuración por defecto
+                    document.getElementById('header-row').value = '1';
+                    document.getElementById('lote-code-column').value = 'A';
+                    document.getElementById('price-column').value = 'D';
+                    document.getElementById('status-column').value = 'E';
+
+                    // Procesar automáticamente el Excel
+                    processExcelFileAutomatic();
+                })
+                .catch(error => {
+                    console.error('Error en la carga automática del Excel:', error);
+
+                    if (loadingEl) loadingEl.classList.remove('active');
+
+                    let errorMessage = 'No se pudo cargar el archivo Excel. ';
+
+                    if (error.message.includes('HTTP')) {
+                        errorMessage += 'Verifica que el archivo existe en img/DATOS.xlsx';
+                    } else if (error.message.includes('XLSX')) {
+                        errorMessage += 'Asegúrate de que la librería SheetJS está incluida.';
+                    } else {
+                        errorMessage += 'Por favor, impórtelo manualmente.';
+                    }
+
+                    showNotification(errorMessage, 'info');
+                });
+        }
+
+function loadDefaultGLB() {
+    console.log("Iniciando carga automática de múltiples modelos GLB...");
+
+    const loadingEl = document.getElementById('loading');
+    const loadingText = document.querySelector('.loading-text');
+
+    if (loadingEl) loadingEl.classList.add('active');
+    if (loadingText) loadingText.textContent = 'Cargando modelos 3D...';
+
+    // Array con las rutas de los modelos a cargar
+    const glbPaths = [
+        'img/MODELO1.GLB',
+        'img/MODELO2.GLB',
+        'img/MODELO3.GLB',
+        'img/MODELO4.GLB',
+        'img/MODELO5.GLB',
+        'img/MODELO6.GLB',
+        'img/MODELO7.GLB',
+        'img/MODELO8.GLB',
+        'img/MODELO9.GLB',
+        'img/MODELO10.GLB',
+        'img/MODELO11.GLB',
+        'img/MODELO12.GLB',
+        'img/MODELO13.GLB',
+        'img/MODELO14.GLB',
+        'img/MODELO15.GLB',
+        'img/MODELO16.GLB',
+        'img/MODELO17.GLB',
+        'img/MODELO18.GLB',
+        'img/MODELO19.GLB',
+        'img/MODELO20.GLB',
+        'img/MODELO21.GLB',
+        'img/MODELO22.GLB',
+        'img/MODELO23.GLB',
+        'img/MODELO24.GLB',
+        'img/MODELO25.GLB',
+        'img/MODELO26.GLB',
+        'img/MODELO27.GLB',
+        'img/MODELO28.GLB',
+        'img/MODELO29.GLB',
+        'img/MODELO30.GLB',
+        'img/MODELO31.GLB',
+        'img/MODELO32.GLB',
+        'img/MODELO33.GLB',
+        'img/MODELO34.GLB',
+        'img/MODELO35.GLB',
+        'img/MODELO36.GLB',
+        'img/MODELO37.GLB',
+        'img/MODELO38.GLB'
+    ];
+
+    // Array para almacenar los modelos cargados
+    const loadedModels = [];
+    let modelsLoaded = 0;
+    let errors = [];
+    let globalOriginUTM = null; // Origen común para todos los modelos
+
+    // Función para cargar un modelo individual
+    function loadSingleModel(glbPath, index) {
+        return fetch(glbPath)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error HTTP en ${glbPath}: ${response.status} ${response.statusText}`);
+                }
+                return response.arrayBuffer();
+            })
+            .then(arrayBuffer => {
+                console.log(`Archivo ${glbPath} cargado exitosamente`);
+
+                // Verificar que THREE.GLTFLoader esté disponible
+                if (typeof THREE === 'undefined' || !THREE.GLTFLoader) {
+                    throw new Error('La librería THREE.js o GLTFLoader no está cargada');
+                }
+
+                return new Promise((resolve, reject) => {
+                    const loader = new THREE.GLTFLoader();
+
+                    loader.parse(arrayBuffer, '', function (gltf) {
+                        const model = gltf.scene;
+                        model.name = `Modelo_${index + 1}`; // Asignar nombre único
+
+                        // Calcular el bounding box original DEL MODELO
+                        const bbox = new THREE.Box3().setFromObject(model);
+                        const center = bbox.getCenter(new THREE.Vector3());
+                        const size = bbox.getSize(new THREE.Vector3());
+
+                        console.log(`${glbPath} - Centro original: X=${center.x.toFixed(2)}, Y=${center.y.toFixed(2)}, Z=${center.z.toFixed(2)}`);
+
+                        // Detectar si usa coordenadas UTM (valores grandes)
+                        if (Math.abs(center.x) > 10000 || Math.abs(center.z) > 10000) {
+                            
+                            // Guardar el origen UTM del primer modelo como referencia global
+                            if (index === 0 && globalOriginUTM === null) {
+                                globalOriginUTM = {
+                                    x: Math.round(center.x),
+                                    y: Math.round(center.y),
+                                    z: Math.round(center.z)
+                                };
+                                originUTM3D.x = globalOriginUTM.x;
+                                originUTM3D.y = globalOriginUTM.y;
+                                originUTM3D.z = -globalOriginUTM.z; // Z invertido
+                                hasOrigin3D = true;
+                                console.log('Origen UTM global establecido:', globalOriginUTM);
+                            }
+
+                            // Calcular el offset relativo al origen global
+                            const offsetX = center.x - globalOriginUTM.x;
+                            const offsetY = center.y - globalOriginUTM.y;
+                            const offsetZ = center.z - globalOriginUTM.z;
+
+                            console.log(`${glbPath} - Offset relativo: X=${offsetX.toFixed(2)}, Y=${offsetY.toFixed(2)}, Z=${offsetZ.toFixed(2)}`);
+
+                            // Recentrar el modelo respecto al origen GLOBAL
+                            model.traverse((child) => {
+                                if (child.isMesh && child.geometry) {
+                                    const geometry = child.geometry;
+
+                                    // Aplicar transformación del objeto a la geometría
+                                    child.updateMatrixWorld(true);
+                                    geometry.applyMatrix4(child.matrixWorld);
+
+                                    // Trasladar vértices al origen GLOBAL (no al centro del modelo)
+                                    const positions = geometry.attributes.position;
+                                    for (let i = 0; i < positions.count; i++) {
+                                        positions.setX(i, positions.getX(i) - globalOriginUTM.x);
+                                        positions.setY(i, positions.getY(i) - globalOriginUTM.y);
+                                        positions.setZ(i, positions.getZ(i) - globalOriginUTM.z);
+                                    }
+
+                                    positions.needsUpdate = true;
+                                    geometry.computeBoundingBox();
+                                    geometry.computeBoundingSphere();
+
+                                    // Resetear transformaciones del objeto
+                                    child.position.set(0, 0, 0);
+                                    child.rotation.set(0, 0, 0);
+                                    child.scale.set(1, 1, 1);
+                                    child.updateMatrix();
+                                    child.matrixAutoUpdate = true;
+                                }
+                            });
+
+                            // El modelo ya está en su posición correcta relativa
+                            model.position.set(0, 0, 0);
+                            model.rotation.set(0, 0, 0);
+                            model.scale.set(1, 1, 1);
+
+                        } else {
+                            // Sin coordenadas UTM, mantener posición original
+                            model.position.set(0, 0, 0);
+                            if (index === 0) hasOrigin3D = false;
+                        }
+
+                        // Configurar sombras y materiales
+                        model.traverse((child) => {
+                            if (child.isMesh) {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+
+                                if (child.material) {
+                                    child.material.needsUpdate = true;
+                                    if (child.material.map) {
+                                        child.material.map.encoding = THREE.sRGBEncoding;
+                                    }
+                                }
+                            }
+                        });
+
+                        resolve(model);
+
+                    }, function (error) {
+                        reject(error);
+                    });
+                });
+            })
+            .catch(error => {
+                console.error(`Error al cargar ${glbPath}:`, error);
+                errors.push({ path: glbPath, error: error.message });
+                return null; // Retornar null para continuar con otros modelos
+            });
+    }
+
+    // Cargar todos los modelos en SECUENCIA para establecer el origen correcto
+    async function loadAllModels() {
+        const models = [];
+        
+        for (let i = 0; i < glbPaths.length; i++) {
+            const model = await loadSingleModel(glbPaths[i], i);
+            models.push(model);
+        }
+        
+        return models;
+    }
+
+    loadAllModels()
+        .then(models => {
+            // Remover modelos anteriores si existen
+            if (glbModel3D) {
+                scene3D.remove(glbModel3D);
+            }
+
+            // Crear un grupo para contener todos los modelos
+            const modelGroup = new THREE.Group();
+            modelGroup.name = 'ModelosGrupo';
+
+            // Agregar modelos válidos al grupo
+            models.forEach(model => {
+                if (model !== null) {
+                    modelGroup.add(model);
+                    modelsLoaded++;
+                }
+            });
+
+            if (modelsLoaded > 0) {
+                glbModel3D = modelGroup;
+                scene3D.add(glbModel3D);
+
+                // Calcular bounding box del grupo completo
+                const groupBbox = new THREE.Box3().setFromObject(glbModel3D);
+                const groupCenter = groupBbox.getCenter(new THREE.Vector3());
+                const groupSize = groupBbox.getSize(new THREE.Vector3());
+
+                console.log('Bounding box del grupo completo:');
+                console.log(`  Centro: X=${groupCenter.x.toFixed(2)}, Y=${groupCenter.y.toFixed(2)}, Z=${groupCenter.z.toFixed(2)}`);
+                console.log(`  Tamaño: X=${groupSize.x.toFixed(2)}, Y=${groupSize.y.toFixed(2)}, Z=${groupSize.z.toFixed(2)}`);
+
+                // Posicionar cámara
+                const maxDim = Math.max(groupSize.x, groupSize.y, groupSize.z);
+                const fov = camera3D.fov * (Math.PI / 180);
+                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                cameraZ *= 2;
+
+                camera3D.position.set(groupCenter.x + cameraZ, groupCenter.y + cameraZ / 2, groupCenter.z + cameraZ);
+                camera3D.lookAt(groupCenter);
+                controls3D.target.copy(groupCenter);
+                controls3D.update();
+
+                if (loadingEl) loadingEl.classList.remove('active');
+                
+                let message = `${modelsLoaded} modelo(s) 3D cargado(s) exitosamente`;
+                if (errors.length > 0) {
+                    message += `. ${errors.length} modelo(s) no se pudieron cargar`;
+                }
+                showNotification(message, modelsLoaded > 0 ? 'success' : 'warning');
+
+                // Mostrar errores específicos en consola
+                if (errors.length > 0) {
+                    console.warn('Errores al cargar modelos:');
+                    errors.forEach(err => console.warn(`- ${err.path}: ${err.error}`));
+                }
+
+                // Procesar lotes en 3D si ya están cargados
+                if (Object.keys(lotesData).length > 0) {
+                    projectionCache3D = null;
+                    lastModelHash = null;
+
+                    requestAnimationFrame(() => {
+                        console.log('Procesando lotes en 3D después de carga automática...');
+                    });
+                }
+            } else {
+                if (loadingEl) loadingEl.classList.remove('active');
+                showNotification('No se pudo cargar ningún modelo 3D', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error general en la carga de modelos:', error);
+            if (loadingEl) loadingEl.classList.remove('active');
+            showNotification('Error crítico al cargar los modelos 3D', 'error');
+        });
+}
+
+
+
+        function processExcelFileAutomatic() {
+            if (!excelData) return;
+
+            try {
+                // Obtener configuración de columnas (valores por defecto)
+                const loteCodeColumn = 'A';
+                const priceColumn = 'D';
+                const statusColumn = 'E';
+                const headerRow = 0; // Primera fila (índice 0)
+
+                // Convertir letras de columna a índices numéricos
+                const colToIndex = (col) => {
+                    let index = 0;
+                    for (let i = 0; i < col.length; i++) {
+                        index = index * 26 + (col.charCodeAt(i) - 'A'.charCodeAt(0) + 1);
+                    }
+                    return index - 1;
+                };
+
+                const loteCodeIndex = colToIndex(loteCodeColumn);
+                const priceIndex = colToIndex(priceColumn);
+                const statusIndex = colToIndex(statusColumn);
+
+                // Procesar datos del Excel
+                const excelLotesData = {};
+
+                for (let i = headerRow + 1; i < excelData.length; i++) {
+                    const row = excelData[i];
+                    if (!row || row.length <= Math.max(loteCodeIndex, priceIndex, statusIndex)) continue;
+
+                    const loteCode = row[loteCodeIndex];
+                    const price = parseFloat(row[priceIndex]) || 0;
+                    const status = row[statusIndex] ? row[statusIndex].toString().toLowerCase() : 'disponible';
+
+                    if (!loteCode) continue;
+
+                    // Normalizar el estado
+                    let normalizedStatus = 'available';
+                    if (status.includes('reserv')) {
+                        normalizedStatus = 'reserved';
+                    } else if (status.includes('vend')) {
+                        normalizedStatus = 'sold';
+                    }
+
+                    excelLotesData[loteCode.toString().trim()] = {
+                        price: price,
+                        status: normalizedStatus
+                    };
+                }
+
+                // Función para normalizar nombres de lotes para comparación
+                const normalizeLoteName = (name) => {
+                    return name.toString()
+                        .toUpperCase()
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                };
+
+                // Aplicar datos del Excel a los lotes
+                let updatedCount = 0;
+                let notFoundCount = 0;
+                const notFoundLotes = [];
+
+                Object.keys(lotesData).forEach(loteName => {
+                    const normalizedLoteName = normalizeLoteName(loteName);
+
+                    // Buscar coincidencia en el Excel
+                    let found = false;
+                    for (const excelCode in excelLotesData) {
+                        const normalizedExcelCode = normalizeLoteName(excelCode);
+
+                        if (normalizedLoteName === normalizedExcelCode) {
+                            lotesData[loteName].price = excelLotesData[excelCode].price;
+                            lotesData[loteName].status = excelLotesData[excelCode].status;
+                            updateLoteStyle(lotesData[loteName]);
+                            updatedCount++;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (!found) {
+                        notFoundCount++;
+                        notFoundLotes.push(loteName);
+                    }
+                });
+
+                excelLoaded = true;
+                updateStatistics();
+
+                const loadingEl = document.getElementById('loading');
+                if (loadingEl) loadingEl.classList.remove('active');
+
+                if (updatedCount > 0) {
+                    showNotification(`Datos cargados: ${updatedCount} lotes actualizados automáticamente`, 'success');
+
+                    if (notFoundCount > 0) {
+                        console.warn(`${notFoundCount} lotes del DXF no se encontraron en el Excel:`, notFoundLotes);
+                    }
+                } else {
+                    showNotification('No se encontraron coincidencias entre el DXF y el Excel', 'error');
+                    console.log('Lotes en DXF:', Object.keys(lotesData));
+                    console.log('Códigos en Excel:', Object.keys(excelLotesData));
+                }
+
+                // Si hay un lote seleccionado, actualizar su vista
+                if (selectedLote) {
+                    showLoteDetails(selectedLote);
+                }
+
+            } catch (error) {
+                console.error('Error procesando Excel automático:', error);
+                const loadingEl = document.getElementById('loading');
+                if (loadingEl) loadingEl.classList.remove('active');
+                showNotification('Error al procesar el archivo Excel automáticamente', 'error');
+            }
         }
 
         function initMap() {
             map = L.map('map-viewer', {
                 center: [-21.5355, -63.6714],
-                zoom: 13,
+                zoom: 50,
                 zoomControl: false,
-                maxZoom: 22,
+                maxZoom: 50,
                 minZoom: 3
             });
 
@@ -1732,19 +2465,410 @@
             });
         }
 
-        function setupEventListeners() {
-            // Botones de importación DXF
-            document.getElementById('import-dxf-tool').addEventListener('click', showDxfModal);
-            document.getElementById('import-dxf-button').addEventListener('click', showDxfModal);
 
+
+
+        function init3D() {
+            const container = document.getElementById('viewer-3d');
+            const canvas = document.getElementById('canvas-3d');
+
+            scene3D = new THREE.Scene();
+            scene3D.background = new THREE.Color(0x87ceeb);
+
+            camera3D = new THREE.PerspectiveCamera(
+                60,
+                container.clientWidth / container.clientHeight,
+                0.01,
+                10000
+            );
+            camera3D.position.set(100, 100, 100);
+
+            renderer3D = new THREE.WebGLRenderer({
+                canvas: canvas,
+                antialias: true,
+                logarithmicDepthBuffer: true,
+                precision: 'highp'
+            });
+            renderer3D.setSize(container.clientWidth, container.clientHeight);
+            renderer3D.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer3D.shadowMap.enabled = true;
+            renderer3D.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer3D.outputEncoding = THREE.sRGBEncoding;
+
+            controls3D = new THREE.OrbitControls(camera3D, renderer3D.domElement);
+            controls3D.enableDamping = true;
+            controls3D.dampingFactor = 0.05;
+            controls3D.screenSpacePanning = true;
+            controls3D.minDistance = 1;
+            controls3D.maxDistance = 500;
+
+            // Iluminación
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene3D.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(100, 100, 50);
+            dirLight.castShadow = true;
+            scene3D.add(dirLight);
+
+            const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+            dirLight2.position.set(-100, 50, -50);
+            scene3D.add(dirLight2);
+
+            const hemisphereLight = new THREE.HemisphereLight(0x87ceeb, 0x8B7355, 0.5);
+            scene3D.add(hemisphereLight);
+
+            // Grid y ejes (ocultos por defecto)
+            gridHelper3D = new THREE.GridHelper(500, 50, 0x00ff00, 0x444444);
+            gridHelper3D.visible = false; // Oculto por defecto
+            scene3D.add(gridHelper3D);
+
+            axesHelper3D = new THREE.AxesHelper(100);
+            axesHelper3D.visible = false; // Oculto por defecto
+            scene3D.add(axesHelper3D);
+
+            // Event listeners (botones removidos)
+            window.addEventListener('resize', onWindowResize3D);
+            document.getElementById('reset-camera-3d').addEventListener('click', resetCamera3D);
+            document.getElementById('take-screenshot-3d').addEventListener('click', takeScreenshot3D);
+            document.getElementById('toggle-controls-3d').addEventListener('click', toggleControls3D);
+
+            animate3D();
+
+            // Event listeners para clics y hover en el canvas 3D
+            canvas.addEventListener('click', onCanvas3DClick);
+            canvas.addEventListener('mousemove', onCanvas3DMouseMove);
+        }
+
+        function onCanvas3DClick(event) {
+            if (!is3DViewActive || !dxfGroup3D) return;
+
+            const canvas = document.getElementById('canvas-3d');
+            const rect = canvas.getBoundingClientRect();
+
+            // Calcular coordenadas del mouse normalizadas (-1 a +1)
+            const mouse = new THREE.Vector2();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            // Configurar raycaster desde la cámara
+            raycaster3D.setFromCamera(mouse, camera3D);
+
+            // Detectar intersecciones con los objetos del grupo DXF
+            const intersects = raycaster3D.intersectObjects(dxfGroup3D.children, true);
+
+            if (intersects.length > 0) {
+                // Buscar el primer objeto que tenga userData.loteName
+                for (let i = 0; i < intersects.length; i++) {
+                    const object = intersects[i].object;
+
+                    if (object.userData && object.userData.loteName) {
+                        const loteName = object.userData.loteName;
+                        console.log('Lote seleccionado en 3D:', loteName);
+
+                        // Llamar a la función existente que muestra detalles del lote
+                        selectLote(loteName);
+
+                        // Resaltar el lote en 3D
+                        highlightLoteIn3D(loteName);
+
+                        break;
+                    }
+                }
+            }
+        }
+
+
+        function highlightLoteIn3D(selectedLoteName) {
+            if (!dxfGroup3D) return;
+
+            // Restaurar todos los lotes a su estado normal
+            dxfGroup3D.traverse((child) => {
+                if (child.userData && child.userData.loteName) {
+                    if (child.userData.type === 'border') {
+                        // Restaurar color original del borde
+                        const lote = lotesData[child.userData.loteName];
+                        if (lote) {
+                            let color;
+                            if (lote.status === 'available') {
+                                color = new THREE.Color(0x10b981);
+                            } else if (lote.status === 'reserved') {
+                                color = new THREE.Color(0xf59e0b);
+                            } else if (lote.status === 'sold') {
+                                color = new THREE.Color(0xef4444);
+                            } else {
+                                color = new THREE.Color(0x8B4513);
+                            }
+
+                            if (child.material) {
+                                child.material.color = color;
+                                child.material.emissive = new THREE.Color(0x000000);
+                            }
+                        }
+                    }
+
+                    if (child.userData.type === 'label') {
+                        // Restaurar escala original
+                        child.scale.set(5, 5, 1);
+                    }
+                }
+            });
+
+            // Resaltar el lote seleccionado
+            dxfGroup3D.traverse((child) => {
+                if (child.userData && child.userData.loteName === selectedLoteName) {
+                    if (child.userData.type === 'border') {
+                        // Hacer el borde más brillante y grueso
+                        if (child.material) {
+                            child.material.emissive = new THREE.Color(0xffffff);
+                            child.material.emissiveIntensity = 0.5;
+                        }
+                    }
+
+                    if (child.userData.type === 'label') {
+                        // Hacer el número más grande
+                        child.scale.set(7, 7, 1);
+                    }
+                }
+            });
+
+            console.log('Lote resaltado en 3D:', selectedLoteName);
+        }
+
+
+        function onCanvas3DMouseMove(event) {
+            if (!is3DViewActive || !dxfGroup3D) return;
+
+            const canvas = document.getElementById('canvas-3d');
+            const rect = canvas.getBoundingClientRect();
+
+            const mouse = new THREE.Vector2();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster3D.setFromCamera(mouse, camera3D);
+            const intersects = raycaster3D.intersectObjects(dxfGroup3D.children, true);
+
+            let overLote = false;
+
+            if (intersects.length > 0) {
+                for (let i = 0; i < intersects.length; i++) {
+                    if (intersects[i].object.userData && intersects[i].object.userData.loteName) {
+                        overLote = true;
+                        break;
+                    }
+                }
+            }
+
+            canvas.style.cursor = overLote ? 'pointer' : 'default';
+        }
+
+        function onWindowResize3D() {
+            const container = document.getElementById('viewer-3d');
+            camera3D.aspect = container.clientWidth / container.clientHeight;
+            camera3D.updateProjectionMatrix();
+            renderer3D.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            controls3D.update();
+
+            // Actualizar coordenadas
+            updateCoordinates3D();
+
+            renderer3D.render(scene3D, camera3D);
+        }
+
+        function updateCoordinates3D() {
+            if (is3DViewActive) {
+                const coordsElement = document.querySelector('.coordinates-3d');
+                if (coordsElement) {
+                    // Mostrar posición de la cámara
+                    coordsElement.textContent = `X: ${camera3D.position.x.toFixed(2)}, Y: ${camera3D.position.y.toFixed(2)}, Z: ${camera3D.position.z.toFixed(2)}`;
+                }
+            }
+        }
+
+        function toggleControls3D() {
+            const controls = document.querySelector('.controls-3d');
+            if (controls.style.display === 'none') {
+                controls.style.display = 'block';
+            } else {
+                controls.style.display = 'none';
+            }
+        }
+
+        function toggleGrid3D() {
+            gridHelper3D.visible = !gridHelper3D.visible;
+        }
+
+        function toggleAxes3D() {
+            axesHelper3D.visible = !axesHelper3D.visible;
+        }
+
+        function resetCamera3D() {
+            if (glbModel3D) {
+                const box = new THREE.Box3().setFromObject(glbModel3D);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const fov = camera3D.fov * (Math.PI / 180);
+                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                cameraZ *= 2;
+
+                camera3D.position.set(center.x + cameraZ, center.y + cameraZ / 2, center.z + cameraZ);
+                camera3D.lookAt(center);
+                controls3D.target.copy(center);
+                controls3D.update();
+            }
+        }
+
+        function takeScreenshot3D() {
+            renderer3D.render(scene3D, camera3D);
+            const screenshot = renderer3D.domElement.toDataURL('image/png');
+
+            const link = document.createElement('a');
+            link.download = `captura_3d_${Date.now()}.png`;
+            link.href = screenshot;
+            link.click();
+
+            showNotification('Captura guardada correctamente', 'success');
+        }
+
+        function loadGLB3D(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showNotification('Cargando modelo 3D...', 'info');
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const loader = new THREE.GLTFLoader();
+
+                loader.parse(e.target.result, '', function (gltf) {
+                    if (glbModel3D) {
+                        scene3D.remove(glbModel3D);
+                    }
+
+                    glbModel3D = gltf.scene;
+
+                    // Calcular el bounding box original
+                    const bbox = new THREE.Box3().setFromObject(glbModel3D);
+                    const center = bbox.getCenter(new THREE.Vector3());
+                    const size = bbox.getSize(new THREE.Vector3());
+
+                    // Detectar si usa coordenadas UTM (valores grandes)
+                    if (Math.abs(center.x) > 10000 || Math.abs(center.z) > 10000) {
+                        // Guardar el origen UTM para referencia
+                        originUTM3D.x = Math.round(center.x);
+                        originUTM3D.y = Math.round(center.y);
+                        originUTM3D.z = Math.round(-center.z); // Z invertido
+                        hasOrigin3D = true;
+
+                        console.log('Origen UTM detectado:', originUTM3D);
+
+                        // Recentrar el modelo al origen (0,0,0)
+                        glbModel3D.traverse((child) => {
+                            if (child.isMesh && child.geometry) {
+                                const geometry = child.geometry;
+
+                                // Aplicar transformación del objeto a la geometría
+                                child.updateMatrixWorld(true);
+                                geometry.applyMatrix4(child.matrixWorld);
+
+                                // Trasladar vértices al origen
+                                const positions = geometry.attributes.position;
+                                for (let i = 0; i < positions.count; i++) {
+                                    positions.setX(i, positions.getX(i) - center.x);
+                                    positions.setY(i, positions.getY(i) - center.y);
+                                    positions.setZ(i, positions.getZ(i) - center.z);
+                                }
+
+                                positions.needsUpdate = true;
+                                geometry.computeBoundingBox();
+                                geometry.computeBoundingSphere();
+
+                                // Resetear transformaciones del objeto
+                                child.position.set(0, 0, 0);
+                                child.rotation.set(0, 0, 0);
+                                child.scale.set(1, 1, 1);
+                                child.updateMatrix();
+                                child.matrixAutoUpdate = true;
+                            }
+                        });
+
+                        glbModel3D.position.set(0, 0, 0);
+                        glbModel3D.rotation.set(0, 0, 0);
+                        glbModel3D.scale.set(1, 1, 1);
+                    } else {
+                        glbModel3D.position.set(0, 0, 0);
+                        hasOrigin3D = false;
+                    }
+
+                    // Configurar sombras y materiales
+                    glbModel3D.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+
+                            if (child.material) {
+                                child.material.needsUpdate = true;
+                                if (child.material.map) {
+                                    child.material.map.encoding = THREE.sRGBEncoding;
+                                }
+                            }
+                        }
+                    });
+
+                    scene3D.add(glbModel3D);
+
+                    // Calcular nuevo bounding box después de recentrar
+                    const newBbox = new THREE.Box3().setFromObject(glbModel3D);
+                    const newCenter = newBbox.getCenter(new THREE.Vector3());
+                    const newSize = newBbox.getSize(new THREE.Vector3());
+
+                    // Posicionar cámara
+                    const maxDim = Math.max(newSize.x, newSize.y, newSize.z);
+                    const fov = camera3D.fov * (Math.PI / 180);
+                    let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                    cameraZ *= 2;
+
+                    camera3D.position.set(newCenter.x + cameraZ, newCenter.y + cameraZ / 2, newCenter.z + cameraZ);
+                    camera3D.lookAt(newCenter);
+                    controls3D.target.copy(newCenter);
+                    controls3D.update();
+
+                    showNotification('Modelo 3D cargado correctamente', 'success');
+
+                    // IMPORTANTE: Procesar lotes en 3D si ya están cargados
+                    if (Object.keys(lotesData).length > 0) {
+                        // Invalidar caché al cargar nuevo modelo
+                        projectionCache3D = null;
+                        lastModelHash = null;
+
+                        // Esperar un frame para asegurar que el modelo esté completamente cargado
+                        requestAnimationFrame(() => {
+                            processLotesIn3D();
+                        });
+                    }
+
+                }, function (error) {
+                    showNotification('Error al cargar modelo 3D: ' + error.message, 'error');
+                    console.error(error);
+                });
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+
+
+        function setupEventListeners() {
             // Modal DXF
             document.getElementById('modal-close').addEventListener('click', hideDxfModal);
             document.getElementById('cancel-button').addEventListener('click', hideDxfModal);
-
-            // Modal de Reserva
-            document.getElementById('reservation-modal-close').addEventListener('click', hideReservationModal);
-            document.getElementById('reservation-cancel').addEventListener('click', hideReservationModal);
-            document.getElementById('reservation-confirm').addEventListener('click', confirmReservation);
 
             // Control para cambiar entre UTM y Lat/Lng
             document.getElementById('coord-system').addEventListener('change', function () {
@@ -1775,34 +2899,107 @@
                 if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
             });
 
+
+
             // Botón de procesar DXF
             document.getElementById('process-button').addEventListener('click', processDxfFile);
 
             // Botones de herramientas
             document.getElementById('zoom-in-tool').addEventListener('click', () => map.zoomIn());
             document.getElementById('zoom-out-tool').addEventListener('click', () => map.zoomOut());
-            document.getElementById('reset-view-tool').addEventListener('click', () => {
-                if (allBounds) {
-                    map.fitBounds(allBounds, { padding: [50, 50] });
-                }
-            });
 
-            document.getElementById('fullscreen-tool').addEventListener('click', function () {
-                const elem = document.documentElement;
-                if (!document.fullscreenElement) {
-                    if (elem.requestFullscreen) elem.requestFullscreen();
-                    this.innerHTML = '<i class="fas fa-compress"></i>';
-                } else {
-                    if (document.exitFullscreen) document.exitFullscreen();
-                    this.innerHTML = '<i class="fas fa-expand"></i>';
-                }
-            });
+            // Botón de pantalla completa
+            const fullscreenBtn = document.getElementById('fullscreen-tool');
+            if (fullscreenBtn) {
+                fullscreenBtn.addEventListener('click', function () {
+                    const elem = document.documentElement;
+                    if (!document.fullscreenElement) {
+                        if (elem.requestFullscreen) {
+                            elem.requestFullscreen();
+                        } else if (elem.webkitRequestFullscreen) { // Safari
+                            elem.webkitRequestFullscreen();
+                        } else if (elem.msRequestFullscreen) { // IE11
+                            elem.msRequestFullscreen();
+                        }
+                        this.innerHTML = '<i class="fas fa-compress"></i>';
+                    } else {
+                        if (document.exitFullscreen) {
+                            document.exitFullscreen();
+                        } else if (document.webkitExitFullscreen) { // Safari
+                            document.webkitExitFullscreen();
+                        } else if (document.msExitFullscreen) { // IE11
+                            document.msExitFullscreen();
+                        }
+                        this.innerHTML = '<i class="fas fa-expand"></i>';
+                    }
+                });
 
-            // Botón de limpiar vista
-            document.getElementById('clear-button').addEventListener('click', clearView);
+                // Escuchar cambios de pantalla completa para actualizar el ícono
+                document.addEventListener('fullscreenchange', () => {
+                    if (!document.fullscreenElement) {
+                        fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
+                    }
+                });
+            }
+
+            // Botón de limpiar vista removido - no es necesario
 
             // Notificación
             document.getElementById('notification-close').addEventListener('click', hideNotification);
+
+            // Event listener para el botón de vista 3D
+            document.querySelectorAll('.view-button').forEach(button => {
+                button.addEventListener('click', function () {
+                    document.querySelectorAll('.view-button').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    const view = this.getAttribute('data-view');
+
+                    if (view === '3d') {
+                        // Cambiar a vista 3D
+                        document.getElementById('map-viewer').style.display = 'none';
+                        document.getElementById('viewer-3d').style.display = 'block';
+                        document.querySelector('.coordinates').style.display = 'none';
+                        document.querySelector('.coordinates-3d').style.display = 'block';
+                        document.querySelector('.legend').style.display = 'none';
+
+                        is3DViewActive = true;
+
+                        // Inicializar vista 3D si no está inicializada
+                        if (!scene3D) {
+                            init3D();
+                        }
+
+                        // Procesar lotes en 3D si hay datos
+                        if (Object.keys(lotesData).length > 0) {
+                            processLotesIn3D();
+                        }
+
+                        // Redimensionar el renderer
+                        setTimeout(() => {
+                            const container = document.getElementById('viewer-3d');
+                            camera3D.aspect = container.clientWidth / container.clientHeight;
+                            camera3D.updateProjectionMatrix();
+                            renderer3D.setSize(container.clientWidth, container.clientHeight);
+                        }, 100);
+                    } else {
+                        // Cambiar a vista 2D
+                        document.getElementById('map-viewer').style.display = 'block';
+                        document.getElementById('viewer-3d').style.display = 'none';
+                        document.querySelector('.coordinates').style.display = 'block';
+                        document.querySelector('.coordinates-3d').style.display = 'none';
+                        document.querySelector('.legend').style.display = 'block';
+
+                        is3DViewActive = false;
+
+                        // Cambiar capa de mapa
+                        if (map.hasLayer(currentLayer)) map.removeLayer(currentLayer);
+                        if (view === 'map') currentLayer = osmLayer;
+                        else if (view === 'satellite') currentLayer = satelliteLayer;
+                        else if (view === 'terrain') currentLayer = terrainLayer;
+                        map.addLayer(currentLayer);
+                    }
+                });
+            });
         }
 
         function setupScrollBehavior() {
@@ -1810,20 +3007,33 @@
             const scrollIndicator = document.getElementById('scroll-indicator');
             const sidebarShadow = document.getElementById('sidebar-shadow');
 
+            // Verificar que los elementos existan antes de continuar
+            if (!sidebarContent || !scrollIndicator || !sidebarShadow) {
+                console.warn('Elementos de scroll no encontrados, omitiendo configuración de scroll');
+                return;
+            }
+
             function checkScroll() {
+                const sidebarContent = document.getElementById('sidebar-content');
+                const scrollIndicator = document.getElementById('scroll-indicator');
+                const sidebarShadow = document.getElementById('sidebar-shadow');
+
+                // Verificar que los elementos existan antes de usarlos
+                if (!sidebarContent) return;
+
                 const hasScroll = sidebarContent.scrollHeight > sidebarContent.clientHeight;
                 const isScrolled = sidebarContent.scrollTop > 10;
 
-                if (hasScroll) {
+                if (hasScroll && scrollIndicator) {
                     scrollIndicator.classList.add('visible');
-                    if (isScrolled) {
+                    if (isScrolled && sidebarShadow) {
                         sidebarShadow.classList.add('visible');
-                    } else {
+                    } else if (sidebarShadow) {
                         sidebarShadow.classList.remove('visible');
                     }
                 } else {
-                    scrollIndicator.classList.remove('visible');
-                    sidebarShadow.classList.remove('visible');
+                    if (scrollIndicator) scrollIndicator.classList.remove('visible');
+                    if (sidebarShadow) sidebarShadow.classList.remove('visible');
                 }
             }
 
@@ -1859,6 +3069,175 @@
 
         function hideDxfModal() {
             document.getElementById('dxf-modal').classList.add('hidden');
+        }
+
+        function showExcelModal() {
+            if (Object.keys(lotesData).length === 0) {
+                showNotification('Primero debes importar un archivo DXF con lotes', 'error');
+                return;
+            }
+            document.getElementById('excel-modal').classList.remove('hidden');
+        }
+
+        function hideExcelModal() {
+            document.getElementById('excel-modal').classList.add('hidden');
+        }
+
+        function handleExcelFileSelect(file) {
+            const validExtensions = ['.xlsx', '.xls'];
+            const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+            if (!validExtensions.includes(fileExtension)) {
+                showNotification('Por favor selecciona un archivo Excel (.xlsx o .xls)', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    // Tomar la primera hoja
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+
+                    // Convertir a array de arrays
+                    excelData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    document.querySelector('#excel-upload-area .upload-text').textContent = file.name;
+                    document.querySelector('#excel-upload-area .upload-hint').textContent = 'Archivo cargado exitosamente';
+                    document.getElementById('excel-process-button').disabled = false;
+
+                    showNotification('Archivo Excel cargado. Verifica la configuración de columnas.', 'info');
+
+                } catch (err) {
+                    console.error('Error completo:', err);
+                    showNotification('Error al leer el archivo Excel: ' + err.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processExcelFile() {
+            if (!excelData) return;
+
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('excel-modal').classList.add('hidden');
+
+            setTimeout(() => {
+                try {
+                    // Obtener configuración de columnas
+                    const loteCodeColumn = document.getElementById('lote-code-column').value.toUpperCase();
+                    const priceColumn = document.getElementById('price-column').value.toUpperCase();
+                    const statusColumn = document.getElementById('status-column').value.toUpperCase();
+                    const headerRow = parseInt(document.getElementById('header-row').value) - 1;
+
+                    // Convertir letras de columna a índices numéricos
+                    const colToIndex = (col) => {
+                        let index = 0;
+                        for (let i = 0; i < col.length; i++) {
+                            index = index * 26 + (col.charCodeAt(i) - 'A'.charCodeAt(0) + 1);
+                        }
+                        return index - 1;
+                    };
+
+                    const loteCodeIndex = colToIndex(loteCodeColumn);
+                    const priceIndex = colToIndex(priceColumn);
+                    const statusIndex = colToIndex(statusColumn);
+
+                    // Procesar datos del Excel
+                    const excelLotesData = {};
+
+                    for (let i = headerRow + 1; i < excelData.length; i++) {
+                        const row = excelData[i];
+                        if (!row || row.length <= Math.max(loteCodeIndex, priceIndex, statusIndex)) continue;
+
+                        const loteCode = row[loteCodeIndex];
+                        const price = parseFloat(row[priceIndex]) || 0;
+                        const status = row[statusIndex] ? row[statusIndex].toString().toLowerCase() : 'disponible';
+
+                        if (!loteCode) continue;
+
+                        // Normalizar el estado
+                        let normalizedStatus = 'available';
+                        if (status.includes('reserv')) {
+                            normalizedStatus = 'reserved';
+                        } else if (status.includes('vend')) {
+                            normalizedStatus = 'sold';
+                        }
+
+                        excelLotesData[loteCode.toString().trim()] = {
+                            price: price,
+                            status: normalizedStatus
+                        };
+                    }
+
+                    // Función para normalizar nombres de lotes para comparación
+                    const normalizeLoteName = (name) => {
+                        return name.toString()
+                            .toUpperCase()
+                            .replace(/\s+/g, ' ')
+                            .trim();
+                    };
+
+                    // Aplicar datos del Excel a los lotes
+                    let updatedCount = 0;
+                    let notFoundCount = 0;
+                    const notFoundLotes = [];
+
+                    Object.keys(lotesData).forEach(loteName => {
+                        const normalizedLoteName = normalizeLoteName(loteName);
+
+                        // Buscar coincidencia en el Excel
+                        let found = false;
+                        for (const excelCode in excelLotesData) {
+                            const normalizedExcelCode = normalizeLoteName(excelCode);
+
+                            if (normalizedLoteName === normalizedExcelCode) {
+                                lotesData[loteName].price = excelLotesData[excelCode].price;
+                                lotesData[loteName].status = excelLotesData[excelCode].status;
+                                updateLoteStyle(lotesData[loteName]);
+                                updatedCount++;
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (!found) {
+                            notFoundCount++;
+                            notFoundLotes.push(loteName);
+                        }
+                    });
+
+                    excelLoaded = true;
+                    updateStatistics();
+
+                    document.getElementById('loading').classList.remove('active');
+
+                    if (updatedCount > 0) {
+                        showNotification(`Se actualizaron ${updatedCount} lotes con datos del Excel`, 'success');
+
+                        if (notFoundCount > 0) {
+                            console.warn(`${notFoundCount} lotes del DXF no se encontraron en el Excel:`, notFoundLotes);
+                        }
+                    } else {
+                        showNotification('No se encontraron coincidencias. Verifica que los códigos de lote en el Excel coincidan con los nombres de capa en el DXF.', 'error');
+                        console.log('Lotes en DXF:', Object.keys(lotesData));
+                        console.log('Códigos en Excel:', Object.keys(excelLotesData));
+                    }
+
+                    // Si hay un lote seleccionado, actualizar su vista
+                    if (selectedLote) {
+                        showLoteDetails(selectedLote);
+                    }
+
+                } catch (error) {
+                    console.error('Error procesando Excel:', error);
+                    showNotification('Error al procesar el archivo Excel: ' + error.message, 'error');
+                    document.getElementById('loading').classList.remove('active');
+                }
+            }, 500);
         }
 
         function showReservationModal() {
@@ -2028,6 +3407,14 @@
                 fillOpacity: fillOpacity,
                 weight: 2
             });
+
+            // Actualizar la textura 3D si está activa
+            if (is3DViewActive && dxfGroup3D && glbModel3D) {
+                // Regenerar la textura completa
+                scene3D.remove(dxfGroup3D);
+                dxfGroup3D = new THREE.Group();
+                createCombinedTextureOverlay();
+            }
         }
 
         function handleFileSelect(file) {
@@ -2320,7 +3707,8 @@
                                     manzano: manzanoLetra,
                                     loteNumero: loteNumero,
                                     points: points,
-                                    bulges: entity.bulges || [],
+                                    bulges: entity.bulges || [],  // Asegurarse de guardar los bulges
+                                    closed: entity.closed,        // Asegurarse de guardar si está cerrado
                                     status: status,
                                     price: 0
                                 };
@@ -2452,6 +3840,27 @@
                 showNotification('No se encontraron manzanos o lotes válidos en el DXF', 'error');
             }
 
+            // Verificar que los elementos existan antes de acceder a ellos
+            const sidebarContent = document.getElementById('sidebar-content');
+            const scrollIndicator = document.getElementById('scroll-indicator');
+
+            setTimeout(() => {
+                // Es crucial volver a verificar que los elementos existan DENTRO del setTimeout
+                const sidebarContent = document.getElementById('sidebar-content');
+                const scrollIndicator = document.getElementById('scroll-indicator');
+
+                // Solo proceder si ambos elementos fueron encontrados
+                if (sidebarContent && scrollIndicator) {
+                    if (sidebarContent.scrollHeight > sidebarContent.clientHeight) {
+                        scrollIndicator.classList.add('visible');
+                    }
+                } else {
+                    // Opcional: muestra una advertencia en la consola si no se encuentran los elementos
+                    if (!sidebarContent) console.warn('Elemento #sidebar-content no encontrado.');
+                    if (!scrollIndicator) console.warn('Elemento #scroll-indicator no encontrado.');
+                }
+            }, 100);
+
             setTimeout(() => {
                 const sidebarContent = document.getElementById('sidebar-content');
                 const scrollIndicator = document.getElementById('scroll-indicator');
@@ -2459,7 +3868,622 @@
                     scrollIndicator.classList.add('visible');
                 }
             }, 100);
+
+            // Guardar entidades de texto para usarlas en 3D
+            if (!window.textEntities3D) {
+                window.textEntities3D = [];
+            }
+
+            dxf.entities.forEach(entity => {
+                if (entity.type === 'TEXT' || entity.type === 'MTEXT') {
+                    if (!entity.position) return;
+
+                    const text = entity.text || '';
+                    if (text.includes('\\A') || /^\d+:\d+\.\d+m$/.test(text.trim())) {
+                        return;
+                    }
+
+                    window.textEntities3D.push(entity);
+                }
+            });
+            // Si la vista 3D está activa, procesar los lotes en 3D
+            if (is3DViewActive) {
+                processLotesIn3D();
+            }
         }
+
+        function processLotesIn3D() {
+            if (!is3DViewActive || !glbModel3D) {
+                console.warn('Vista 3D no activa o modelo GLB no cargado');
+                return;
+            }
+
+            // Calcular hash del modelo actual
+            const currentModelHash = calculateModelHash();
+
+            // Verificar si ya tenemos caché válido
+            if (projectionCache3D && lastModelHash === currentModelHash) {
+                console.log('✓ Usando caché de proyecciones (sin recalcular)');
+
+                // Limpiar lotes existentes
+                if (dxfGroup3D) {
+                    scene3D.remove(dxfGroup3D);
+                    dxfGroup3D = null;
+                }
+
+                dxfGroup3D = new THREE.Group();
+                dxfGroup3D.name = 'DXF_Overlays';
+
+                // Reconstruir visualización desde caché
+                reconstructFromCache();
+
+                showNotification(`${Object.keys(lotesData).length} lotes cargados desde caché`, 'success');
+                return;
+            }
+
+            // Si no hay caché válido, calcular desde cero
+            console.log('Calculando proyecciones (primera vez o modelo cambió)...');
+
+            // Limpiar lotes existentes
+            if (dxfGroup3D) {
+                scene3D.remove(dxfGroup3D);
+                dxfGroup3D = null;
+            }
+
+            dxfGroup3D = new THREE.Group();
+            dxfGroup3D.name = 'DXF_Overlays';
+
+            // Crear la textura combinada proyectada sobre la superficie
+            createSurfaceProjectedOverlay();
+
+            // Guardar hash del modelo
+            lastModelHash = currentModelHash;
+
+            console.log('Lotes procesados en 3D:', Object.keys(lotesData).length);
+            showNotification('Lotes proyectados sobre superficie 3D', 'success');
+        }
+
+
+        // **AGREGAR ESTA FUNCIÓN NUEVA:**
+        function calculateModelHash() {
+            // Crear un hash simple basado en propiedades del modelo
+            if (!glbModel3D) return null;
+
+            const bbox = new THREE.Box3().setFromObject(glbModel3D);
+            const hash = `${bbox.min.x.toFixed(2)}_${bbox.min.y.toFixed(2)}_${bbox.min.z.toFixed(2)}_` +
+                `${bbox.max.x.toFixed(2)}_${bbox.max.y.toFixed(2)}_${bbox.max.z.toFixed(2)}_` +
+                `${Object.keys(lotesData).length}`;
+
+            return hash;
+        }
+
+
+        // **AGREGAR ESTA FUNCIÓN NUEVA:**
+        function reconstructFromCache() {
+            if (!projectionCache3D) return;
+
+            const startTime = performance.now();
+
+            Object.values(lotesData).forEach(lote => {
+                const cacheKey = lote.name;
+                const cachedData = projectionCache3D[cacheKey];
+
+                if (!cachedData) return;
+
+                // Determinar color según estado actual
+                let color;
+                if (lote.status === 'available') {
+                    color = new THREE.Color(0x10b981);
+                } else if (lote.status === 'reserved') {
+                    color = new THREE.Color(0xf59e0b);
+                } else if (lote.status === 'sold') {
+                    color = new THREE.Color(0xef4444);
+                } else {
+                    color = new THREE.Color(0x8B4513);
+                }
+
+                // Reconstruir bordes desde caché
+                for (let i = 0; i < cachedData.projectedVertices.length; i++) {
+                    const v1Data = cachedData.projectedVertices[i];
+                    const v2Data = cachedData.projectedVertices[(i + 1) % cachedData.projectedVertices.length];
+
+                    const v1 = new THREE.Vector3(v1Data.x, v1Data.y, v1Data.z);
+                    const v2 = new THREE.Vector3(v2Data.x, v2Data.y, v2Data.z);
+
+                    const curve = new THREE.LineCurve3(v1, v2);
+                    const tubeGeometry = new THREE.TubeGeometry(curve, 1, 0.15, 8, false);
+                    const tubeMaterial = new THREE.MeshStandardMaterial({
+                        color: color,
+                        roughness: 0.7,
+                        metalness: 0.3
+                    });
+
+                    const tube = new THREE.Mesh(tubeGeometry, tubeMaterial);
+                    tube.renderOrder = 1000;
+                    tube.userData = {
+                        loteName: lote.name,
+                        type: 'border'
+                    };
+
+                    dxfGroup3D.add(tube);
+                }
+
+                // Reconstruir etiqueta desde caché
+                const labelCanvas = document.createElement('canvas');
+                labelCanvas.width = 256;
+                labelCanvas.height = 256;
+                const ctx = labelCanvas.getContext('2d');
+
+                ctx.fillStyle = '#4285F4';
+                ctx.beginPath();
+                ctx.arc(128, 128, 100, 0, 2 * Math.PI);
+                ctx.fill();
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 8;
+                ctx.stroke();
+
+                const loteNum = lote.loteNumero || lote.name.replace(/\D+/g, '');
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 100px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(loteNum, 128, 128);
+
+                const labelTexture = new THREE.CanvasTexture(labelCanvas);
+                const labelMaterial = new THREE.SpriteMaterial({
+                    map: labelTexture,
+                    depthTest: false,
+                    depthWrite: false
+                });
+
+                const sprite = new THREE.Sprite(labelMaterial);
+                sprite.position.set(
+                    cachedData.centroid.x,
+                    cachedData.centroid.y + 3,
+                    cachedData.centroid.z
+                );
+                sprite.scale.set(5, 5, 1);
+                sprite.renderOrder = 1001;
+                sprite.userData = {
+                    loteName: lote.name,
+                    type: 'label'
+                };
+
+                dxfGroup3D.add(sprite);
+            });
+
+            scene3D.add(dxfGroup3D);
+
+            const endTime = performance.now();
+            const timeElapsed = ((endTime - startTime) / 1000).toFixed(2);
+
+            console.log(`✓ Reconstrucción desde caché: ${timeElapsed}s`);
+        }
+
+        async function createSurfaceProjectedOverlay() {
+            if (!glbModel3D || Object.keys(lotesData).length === 0) {
+                console.error('No hay modelo GLB o lotes cargados');
+                return;
+            }
+
+            // Mostrar overlay de progreso
+            const progressOverlay = document.getElementById('progress-overlay');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const progressLotes = document.getElementById('progress-lotes');
+            const progressTotal = document.getElementById('progress-total');
+
+            progressOverlay.classList.add('active');
+            progressBar.style.width = '0%';
+            progressText.textContent = 'Inicializando... 0%';
+
+            const lotesArray = Object.values(lotesData);
+            progressTotal.textContent = lotesArray.length;
+            progressLotes.textContent = '0';
+
+            console.log('=== PROYECCIÓN OPTIMIZADA - INICIO ===');
+            const startTime = performance.now();
+
+            const bbox = new THREE.Box3().setFromObject(glbModel3D);
+            const glbMax = bbox.max;
+            const projectionHeight = glbMax.y + 100;
+
+            const raycaster = new THREE.Raycaster();
+            const rayDirection = new THREE.Vector3(0, -1, 0);
+
+            const intersectionCache = new Map();
+            const CACHE_GRID_SIZE = 5;
+
+            function getCacheKey(x, z) {
+                const gridX = Math.floor(x / CACHE_GRID_SIZE);
+                const gridZ = Math.floor(z / CACHE_GRID_SIZE);
+                return `${gridX}_${gridZ}`;
+            }
+
+            function projectPointWithCache(x, z) {
+                const cacheKey = getCacheKey(x, z);
+
+                if (intersectionCache.has(cacheKey)) {
+                    const cachedY = intersectionCache.get(cacheKey);
+                    return new THREE.Vector3(x, cachedY + 0.3, z);
+                }
+
+                const rayOrigin = new THREE.Vector3(x, projectionHeight, z);
+                raycaster.set(rayOrigin, rayDirection);
+
+                raycaster.firstHitOnly = true;
+                const intersects = raycaster.intersectObject(glbModel3D, true);
+
+                let resultY;
+                if (intersects.length > 0) {
+                    resultY = intersects[0].point.y;
+                    intersectionCache.set(cacheKey, resultY);
+                } else {
+                    resultY = glbMax.y + 1;
+                    intersectionCache.set(cacheKey, resultY);
+                }
+
+                return new THREE.Vector3(x, resultY + 0.3, z);
+            }
+
+            // Actualizar progreso: Pre-calentamiento de caché
+            progressText.textContent = 'Pre-calculando puntos... 5%';
+            progressBar.style.width = '5%';
+            await new Promise(resolve => setTimeout(resolve, 10)); // Permitir que el UI se actualice
+
+            console.log('Pre-calentando caché de intersecciones...');
+
+            let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+
+            Object.values(lotesData).forEach(lote => {
+                if (!lote.vertices) return;
+                const expandedVertices = lote.expandedVertices || lote.vertices;
+
+                expandedVertices.forEach(v => {
+                    let x3D = hasOrigin3D ? (v.x - originUTM3D.x) : v.x;
+                    let z3D = hasOrigin3D ? -(v.y - originUTM3D.z) : -v.y;
+                    minX = Math.min(minX, x3D);
+                    maxX = Math.max(maxX, x3D);
+                    minZ = Math.min(minZ, z3D);
+                    maxZ = Math.max(maxZ, z3D);
+                });
+            });
+
+            const preCacheSteps = 3;
+            const stepX = (maxX - minX) / preCacheSteps;
+            const stepZ = (maxZ - minZ) / preCacheSteps;
+
+            for (let i = 0; i <= preCacheSteps; i++) {
+                for (let j = 0; j <= preCacheSteps; j++) {
+                    const x = minX + i * stepX;
+                    const z = minZ + j * stepZ;
+                    projectPointWithCache(x, z);
+                }
+            }
+
+            console.log(`Caché pre-calentada con ${intersectionCache.size} puntos`);
+
+            // Actualizar progreso: Iniciando procesamiento
+            progressText.textContent = 'Procesando lotes... 10%';
+            progressBar.style.width = '10%';
+            await new Promise(resolve => setTimeout(resolve, 10));
+
+            let lotesProcessed = 0;
+            let totalVertices = 0;
+            let cachedHits = 0;
+
+            // Procesar lotes en lotes (chunks) para no bloquear el UI
+            const CHUNK_SIZE = 5; // Procesar 5 lotes a la vez
+
+            for (let chunkStart = 0; chunkStart < lotesArray.length; chunkStart += CHUNK_SIZE) {
+                const chunkEnd = Math.min(chunkStart + CHUNK_SIZE, lotesArray.length);
+                const chunk = lotesArray.slice(chunkStart, chunkEnd);
+
+                // Procesar chunk
+                for (const lote of chunk) {
+                    if (!lote.vertices || lote.vertices.length < 3) continue;
+
+                    const expandedVertices = lote.expandedVertices || lote.vertices;
+                    const vertices3D = [];
+                    const projectedVertices = [];
+
+                    expandedVertices.forEach(v => {
+                        let x3D = hasOrigin3D ? (v.x - originUTM3D.x) : v.x;
+                        let z3D = hasOrigin3D ? -(v.y - originUTM3D.z) : -v.y;
+                        vertices3D.push({ x: x3D, z: z3D });
+                    });
+
+                    vertices3D.forEach(vertex => {
+                        const projected = projectPointWithCache(vertex.x, vertex.z);
+                        projectedVertices.push(projected);
+                        totalVertices++;
+
+                        const cacheKey = getCacheKey(vertex.x, vertex.z);
+                        if (intersectionCache.has(cacheKey)) {
+                            cachedHits++;
+                        }
+                    });
+
+                    if (projectedVertices.length < 3) continue;
+
+                    let color;
+                    if (lote.status === 'available') {
+                        color = new THREE.Color(0x10b981);
+                    } else if (lote.status === 'reserved') {
+                        color = new THREE.Color(0xf59e0b);
+                    } else if (lote.status === 'sold') {
+                        color = new THREE.Color(0xef4444);
+                    } else {
+                        color = new THREE.Color(0x8B4513);
+                    }
+
+                    for (let i = 0; i < projectedVertices.length; i++) {
+                        const v1 = projectedVertices[i];
+                        const v2 = projectedVertices[(i + 1) % projectedVertices.length];
+
+                        const curve = new THREE.LineCurve3(v1, v2);
+                        const tubeGeometry = new THREE.TubeGeometry(curve, 1, 0.15, 8, false);
+                        const tubeMaterial = new THREE.MeshStandardMaterial({
+                            color: color,
+                            roughness: 0.7,
+                            metalness: 0.3
+                        });
+
+                        const tube = new THREE.Mesh(tubeGeometry, tubeMaterial);
+                        tube.renderOrder = 1000;
+                        tube.userData = {
+                            loteName: lote.name,
+                            type: 'border'
+                        };
+
+                        dxfGroup3D.add(tube);
+                    }
+
+                    let signedArea = 0;
+                    let centroidX = 0;
+                    let centroidZ = 0;
+
+                    for (let i = 0; i < projectedVertices.length; i++) {
+                        const v1 = projectedVertices[i];
+                        const v2 = projectedVertices[(i + 1) % projectedVertices.length];
+
+                        const a = v1.x * v2.z - v2.x * v1.z;
+                        signedArea += a;
+                        centroidX += (v1.x + v2.x) * a;
+                        centroidZ += (v1.z + v2.z) * a;
+                    }
+
+                    signedArea *= 0.5;
+                    centroidX /= (6 * signedArea);
+                    centroidZ /= (6 * signedArea);
+
+                    const rayCentroid = new THREE.Vector3(centroidX, projectionHeight, centroidZ);
+                    raycaster.set(rayCentroid, rayDirection);
+                    const intersectsCentroid = raycaster.intersectObject(glbModel3D, true);
+
+                    let centroidY;
+                    if (intersectsCentroid.length > 0) {
+                        centroidY = intersectsCentroid[0].point.y + 0.3;
+                    } else {
+                        centroidY = projectedVertices.reduce((sum, v) => sum + v.y, 0) / projectedVertices.length;
+                    }
+
+                    const labelCanvas = document.createElement('canvas');
+                    labelCanvas.width = 256;
+                    labelCanvas.height = 256;
+                    const ctx = labelCanvas.getContext('2d');
+
+                    ctx.fillStyle = '#4285F4';
+                    ctx.beginPath();
+                    ctx.arc(128, 128, 100, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 8;
+                    ctx.stroke();
+
+                    const loteNum = lote.loteNumero || lote.name.replace(/\D+/g, '');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 100px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(loteNum, 128, 128);
+
+                    const labelTexture = new THREE.CanvasTexture(labelCanvas);
+                    const labelMaterial = new THREE.SpriteMaterial({
+                        map: labelTexture,
+                        depthTest: false,
+                        depthWrite: false
+                    });
+
+                    const sprite = new THREE.Sprite(labelMaterial);
+                    sprite.position.set(centroidX, centroidY + 3, centroidZ);
+                    sprite.scale.set(5, 5, 1);
+                    sprite.renderOrder = 1001;
+                    sprite.userData = {
+                        loteName: lote.name,
+                        type: 'label'
+                    };
+
+                    dxfGroup3D.add(sprite);
+                    lotesProcessed++;
+                }
+
+                // Actualizar progreso después de cada chunk
+                const progress = 10 + (chunkEnd / lotesArray.length) * 80; // 10% a 90%
+                progressBar.style.width = `${progress}%`;
+                progressText.textContent = `Procesando lotes... ${Math.round(progress)}%`;
+                progressLotes.textContent = chunkEnd;
+
+                // Permitir que el navegador actualice el UI
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+
+            // Guardar en caché
+            progressText.textContent = 'Guardando caché... 95%';
+            progressBar.style.width = '95%';
+            await new Promise(resolve => setTimeout(resolve, 10));
+
+            projectionCache3D = {};
+
+            Object.values(lotesData).forEach(lote => {
+                if (!lote.vertices || lote.vertices.length < 3) return;
+
+                const expandedVertices = lote.expandedVertices || lote.vertices;
+                const vertices3D = [];
+                const projectedVerticesData = [];
+
+                expandedVertices.forEach(v => {
+                    let x3D = hasOrigin3D ? (v.x - originUTM3D.x) : v.x;
+                    let z3D = hasOrigin3D ? -(v.y - originUTM3D.z) : -v.y;
+                    vertices3D.push({ x: x3D, z: z3D });
+                });
+
+                vertices3D.forEach(vertex => {
+                    const projected = projectPointWithCache(vertex.x, vertex.z);
+                    projectedVerticesData.push({
+                        x: projected.x,
+                        y: projected.y,
+                        z: projected.z
+                    });
+                });
+
+                if (projectedVerticesData.length < 3) return;
+
+                let signedArea = 0;
+                let centroidX = 0;
+                let centroidZ = 0;
+
+                for (let i = 0; i < projectedVerticesData.length; i++) {
+                    const v1 = projectedVerticesData[i];
+                    const v2 = projectedVerticesData[(i + 1) % projectedVerticesData.length];
+
+                    const a = v1.x * v2.z - v2.x * v1.z;
+                    signedArea += a;
+                    centroidX += (v1.x + v2.x) * a;
+                    centroidZ += (v1.z + v2.z) * a;
+                }
+
+                signedArea *= 0.5;
+                centroidX /= (6 * signedArea);
+                centroidZ /= (6 * signedArea);
+
+                const rayCentroid = new THREE.Vector3(centroidX, projectionHeight, centroidZ);
+                raycaster.set(rayCentroid, rayDirection);
+                const intersectsCentroid = raycaster.intersectObject(glbModel3D, true);
+
+                let centroidY;
+                if (intersectsCentroid.length > 0) {
+                    centroidY = intersectsCentroid[0].point.y + 0.3;
+                } else {
+                    centroidY = projectedVerticesData.reduce((sum, v) => sum + v.y, 0) / projectedVerticesData.length;
+                }
+
+                projectionCache3D[lote.name] = {
+                    projectedVertices: projectedVerticesData,
+                    centroid: { x: centroidX, y: centroidY, z: centroidZ }
+                };
+            });
+
+            console.log(`✓ Caché guardado con ${Object.keys(projectionCache3D).length} lotes`);
+
+            scene3D.add(dxfGroup3D);
+
+            const endTime = performance.now();
+            const timeElapsed = ((endTime - startTime) / 1000).toFixed(2);
+            const cacheEfficiency = ((cachedHits / totalVertices) * 100).toFixed(1);
+
+            console.log('=== PROYECCIÓN OPTIMIZADA - RESULTADOS ===');
+            console.log(`✓ ${lotesProcessed} lotes procesados`);
+            console.log(`✓ ${totalVertices} vértices proyectados`);
+            console.log(`✓ ${cachedHits} hits de caché (${cacheEfficiency}% eficiencia)`);
+            console.log(`✓ Tiempo: ${timeElapsed}s`);
+            console.log(`✓ Tamaño de caché: ${intersectionCache.size} entradas`);
+
+            // Completar progreso
+            progressBar.style.width = '100%';
+            progressText.textContent = '¡Completado! 100%';
+
+            // Esperar un momento antes de ocultar
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            progressOverlay.classList.remove('active');
+
+            showNotification(`${lotesProcessed} lotes en 3D (${timeElapsed}s) - ${cacheEfficiency}% caché`, 'success');
+        }
+
+
+
+
+        // Función auxiliar para calcular puntos de arco
+        function calculateArcPoints(v1, v2, bulge, segments) {
+            const points = [];
+            const includedAngle = 4 * Math.atan(bulge);
+            const dx = v2.x - v1.x;
+            const dy = v2.y - v1.y;
+            const chordLength = Math.sqrt(dx * dx + dy * dy);
+
+            if (chordLength < 0.0001) return points;
+
+            const radius = chordLength / (2 * Math.sin(includedAngle / 2));
+            const chordAngle = Math.atan2(dy, dx);
+            const centerAngle = (Math.PI / 2 - includedAngle / 2) + chordAngle;
+            const centerX = v1.x + radius * Math.cos(centerAngle);
+            const centerY = v1.y + radius * Math.sin(centerAngle);
+
+            let startAngle = Math.atan2(v1.y - centerY, v1.x - centerX);
+            let endAngle = Math.atan2(v2.y - centerY, v2.x - centerX);
+
+            if (bulge > 0) {
+                if (endAngle <= startAngle) endAngle += 2 * Math.PI;
+            } else {
+                if (startAngle <= endAngle) startAngle += 2 * Math.PI;
+                [startAngle, endAngle] = [endAngle, startAngle];
+            }
+
+            const angleStep = (endAngle - startAngle) / segments;
+
+            for (let i = 1; i < segments; i++) {
+                const angle = startAngle + angleStep * i;
+                const x = centerX + Math.abs(radius) * Math.cos(angle);
+                const y = centerY + Math.abs(radius) * Math.sin(angle);
+                points.push({ x, y });
+            }
+
+            return points;
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         function assignLotesToManzanos() {
             Object.keys(lotesData).forEach(loteName => {
@@ -2559,11 +4583,41 @@
             lote.polygon.bringToFront();
             lotesLayer.bringToFront();
 
-            map.fitBounds(lote.polygon.getBounds(), { padding: [50, 50] });
+            // Ajustar zoom con más padding para ver el lote más alejado
+            map.fitBounds(lote.polygon.getBounds(), {
+                padding: [200, 200],  // Aumentado de [50, 50] a [150, 150]
+                maxZoom: 50           // Limita el zoom máximo
+            });
 
             selectedLote = lote;
 
+            // Resaltar lote en 3D si está activo
+            if (is3DViewActive && dxfGroup3D) {
+                // Primero, restaurar todos los lotes a su estado normal
+                dxfGroup3D.traverse((child) => {
+                    if (child.userData && child.userData.type === 'fill') {
+                        if (child.material) {
+                            child.material.opacity = 0.3;
+                        }
+                    }
+                });
+
+                // Luego, resaltar el lote seleccionado
+                dxfGroup3D.traverse((child) => {
+                    if (child.userData && child.userData.loteName === loteName) {
+                        if (child.userData.type === 'fill' && child.material) {
+                            child.material.opacity = 0.6;
+                        }
+                    }
+                });
+            }
+
             showLoteDetails(lote);
+
+            // Resaltar lote en 3D si está activo
+            if (is3DViewActive && dxfGroup3D) {
+                highlightLoteIn3D(loteName);
+            }
         }
 
         function showLoteDetails(lote) {
@@ -2584,11 +4638,29 @@
                     statusColor = 'var(--sold-color)';
                     break;
                 default:
-                    actionButton = `<button class="control-button success" onclick="showReservationModal()">
-                        <i class="fas fa-handshake"></i>
-                        <span>Reservar Lote</span>
-                    </button>`;
+                    statusText = 'Disponible';
+                    statusColor = 'var(--available-color)';
             }
+
+            // Botón de WhatsApp siempre visible
+            const whatsappNumber = '59173324084'; // Código de país + número
+            const message = `Hola, estoy interesado en el *${lote.name}*\n\n` +
+                ` Manzano: ${lote.manzano}\n` +
+                ` Área: ${lote.area.toFixed(2)} m²\n` +
+                ` Precio: $${lote.price > 0 ? lote.price.toFixed(2) : 'Consultar'} USD\n` +
+                ` Estado: ${statusText}\n\n` +
+                `¿Podría darme más información?`;
+
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+
+            actionButton = `<button class="control-button success" onclick="window.open('${whatsappUrl}', '_blank')">
+    <i class="fab fa-whatsapp"></i>
+    <span>Consultar por WhatsApp</span>
+</button>`;
+
+            const priceDisplay = lote.price > 0 ? `$${lote.price.toFixed(2)}` : 'No definido';
+            const showPriceTag = lote.price > 0 && lote.status === 'available';
 
             lotDataContent.innerHTML = `
                 <div class="lot-data-grid">
@@ -2614,11 +4686,11 @@
                     </div>
                     <div class="lot-data-item">
                         <span class="lot-data-label">Precio:</span>
-                        <span class="lot-data-value">$${lote.price.toFixed(2)}</span>
+                        <span class="lot-data-value">${priceDisplay}</span>
                     </div>
                 </div>
                 ${actionButton}
-                ${lote.price ? `<div class="price-tag">$${lote.price.toFixed(2)} USD</div>` : ''}
+                ${showPriceTag ? `<div class="price-tag">$${lote.price.toFixed(2)} USD</div>` : ''}
             `;
 
             drawLoteInCanvas(lote);
@@ -2955,7 +5027,7 @@
             if (!vertices || vertices.length === 0) return [];
 
             const expandedVertices = [];
-            const segments = 32;
+            const segments = 16;
 
             for (let i = 0; i < vertices.length; i++) {
                 const v1 = vertices[i];
@@ -3165,6 +5237,32 @@
 
             return points;
         }
+
+        function toggleControls3D() {
+            const controls = document.querySelector('.controls-3d');
+            if (controls) {
+                if (controls.style.display === 'none') {
+                    controls.style.display = 'block';
+                } else {
+                    controls.style.display = 'none';
+                }
+            } else {
+                console.warn('Elemento .controls-3d no encontrado');
+            }
+        }
+
+        function updateCoordinates3D() {
+            if (is3DViewActive) {
+                const coordsElement = document.querySelector('.coordinates-3d');
+                if (coordsElement) {
+                    // Mostrar posición de la cámara
+                    coordsElement.textContent = `X: ${camera3D.position.x.toFixed(2)}, Y: ${camera3D.position.y.toFixed(2)}, Z: ${camera3D.position.z.toFixed(2)}`;
+                } else {
+                    console.warn('Elemento .coordinates-3d no encontrado');
+                }
+            }
+        }
+
     </script>
 </body>
 
