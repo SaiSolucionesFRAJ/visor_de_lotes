@@ -2022,52 +2022,14 @@ function loadDefaultGLB() {
     const loadingText = document.querySelector('.loading-text');
 
     if (loadingEl) loadingEl.classList.add('active');
-    if (loadingText) loadingText.textContent = 'Cargando modelos 3D...';
 
-    // Array con las rutas de los modelos a cargar
-    const glbPaths = [
-        'img/MODELO1.GLB',
-        'img/MODELO2.GLB',
-        'img/MODELO3.GLB',
-        'img/MODELO4.GLB',
-        'img/MODELO5.GLB',
-        'img/MODELO6.GLB',
-        'img/MODELO7.GLB',
-        'img/MODELO8.GLB',
-        'img/MODELO9.GLB',
-        'img/MODELO10.GLB',
-        'img/MODELO11.GLB',
-        'img/MODELO12.GLB',
-        'img/MODELO13.GLB',
-        'img/MODELO14.GLB',
-        'img/MODELO15.GLB',
-        'img/MODELO16.GLB',
-        'img/MODELO17.GLB',
-        'img/MODELO18.GLB',
-        'img/MODELO19.GLB',
-        'img/MODELO20.GLB',
-        'img/MODELO21.GLB',
-        'img/MODELO22.GLB',
-        'img/MODELO23.GLB',
-        'img/MODELO24.GLB',
-        'img/MODELO25.GLB',
-        'img/MODELO26.GLB',
-        'img/MODELO27.GLB',
-        'img/MODELO28.GLB',
-        'img/MODELO29.GLB',
-        'img/MODELO30.GLB',
-        'img/MODELO31.GLB',
-        'img/MODELO32.GLB',
-        'img/MODELO33.GLB',
-        'img/MODELO34.GLB',
-        'img/MODELO35.GLB',
-        'img/MODELO36.GLB',
-        'img/MODELO37.GLB',
-        'img/MODELO38.GLB'
-    ];
+    // Array con las rutas de los 38 modelos a cargar
+    const glbPaths = [];
+    for (let i = 1; i <= 38; i++) {
+        glbPaths.push(`img/MODELO${i}.GLB`);
+    }
 
     // Array para almacenar los modelos cargados
-    const loadedModels = [];
     let modelsLoaded = 0;
     let errors = [];
     let globalOriginUTM = null; // Origen común para todos los modelos
@@ -2077,12 +2039,17 @@ function loadDefaultGLB() {
         return fetch(glbPath)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`Error HTTP en ${glbPath}: ${response.status} ${response.statusText}`);
+                    throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
                 }
                 return response.arrayBuffer();
             })
             .then(arrayBuffer => {
-                console.log(`Archivo ${glbPath} cargado exitosamente`);
+                // Verificar que el arrayBuffer tenga contenido válido
+                if (!arrayBuffer || arrayBuffer.byteLength < 20) {
+                    throw new Error(`Archivo inválido o vacío (${arrayBuffer ? arrayBuffer.byteLength : 0} bytes)`);
+                }
+                
+                console.log(`${glbPath} descargado: ${(arrayBuffer.byteLength / 1024).toFixed(2)} KB`);
 
                 // Verificar que THREE.GLTFLoader esté disponible
                 if (typeof THREE === 'undefined' || !THREE.GLTFLoader) {
@@ -2092,16 +2059,18 @@ function loadDefaultGLB() {
                 return new Promise((resolve, reject) => {
                     const loader = new THREE.GLTFLoader();
 
-                    loader.parse(arrayBuffer, '', function (gltf) {
+                    // IMPORTANTE: Pasar el path correcto como segundo parámetro
+                    loader.parse(arrayBuffer, 'img/', function (gltf) {
                         const model = gltf.scene;
-                        model.name = `Modelo_${index + 1}`; // Asignar nombre único
+                        model.name = `Modelo_${index + 1}`;
+                        model.userData.modelIndex = index + 1;
 
                         // Calcular el bounding box original DEL MODELO
                         const bbox = new THREE.Box3().setFromObject(model);
                         const center = bbox.getCenter(new THREE.Vector3());
                         const size = bbox.getSize(new THREE.Vector3());
 
-                        console.log(`${glbPath} - Centro original: X=${center.x.toFixed(2)}, Y=${center.y.toFixed(2)}, Z=${center.z.toFixed(2)}`);
+                        console.log(`Modelo ${index + 1} - Centro: X=${center.x.toFixed(2)}, Y=${center.y.toFixed(2)}, Z=${center.z.toFixed(2)}`);
 
                         // Detectar si usa coordenadas UTM (valores grandes)
                         if (Math.abs(center.x) > 10000 || Math.abs(center.z) > 10000) {
@@ -2115,17 +2084,15 @@ function loadDefaultGLB() {
                                 };
                                 originUTM3D.x = globalOriginUTM.x;
                                 originUTM3D.y = globalOriginUTM.y;
-                                originUTM3D.z = -globalOriginUTM.z; // Z invertido
+                                originUTM3D.z = -globalOriginUTM.z;
                                 hasOrigin3D = true;
-                                console.log('Origen UTM global establecido:', globalOriginUTM);
+                                console.log('✓ Origen UTM global:', globalOriginUTM);
                             }
 
                             // Calcular el offset relativo al origen global
                             const offsetX = center.x - globalOriginUTM.x;
                             const offsetY = center.y - globalOriginUTM.y;
                             const offsetZ = center.z - globalOriginUTM.z;
-
-                            console.log(`${glbPath} - Offset relativo: X=${offsetX.toFixed(2)}, Y=${offsetY.toFixed(2)}, Z=${offsetZ.toFixed(2)}`);
 
                             // Recentrar el modelo respecto al origen GLOBAL
                             model.traverse((child) => {
@@ -2136,7 +2103,7 @@ function loadDefaultGLB() {
                                     child.updateMatrixWorld(true);
                                     geometry.applyMatrix4(child.matrixWorld);
 
-                                    // Trasladar vértices al origen GLOBAL (no al centro del modelo)
+                                    // Trasladar vértices al origen GLOBAL
                                     const positions = geometry.attributes.position;
                                     for (let i = 0; i < positions.count; i++) {
                                         positions.setX(i, positions.getX(i) - globalOriginUTM.x);
@@ -2157,13 +2124,11 @@ function loadDefaultGLB() {
                                 }
                             });
 
-                            // El modelo ya está en su posición correcta relativa
                             model.position.set(0, 0, 0);
                             model.rotation.set(0, 0, 0);
                             model.scale.set(1, 1, 1);
 
                         } else {
-                            // Sin coordenadas UTM, mantener posición original
                             model.position.set(0, 0, 0);
                             if (index === 0) hasOrigin3D = false;
                         }
@@ -2183,27 +2148,37 @@ function loadDefaultGLB() {
                             }
                         });
 
+                        console.log(`✓ Modelo ${index + 1} procesado correctamente`);
                         resolve(model);
 
                     }, function (error) {
-                        reject(error);
+                        reject(new Error(`Error en GLTFLoader.parse: ${error.message || error}`));
                     });
                 });
             })
             .catch(error => {
-                console.error(`Error al cargar ${glbPath}:`, error);
-                errors.push({ path: glbPath, error: error.message });
-                return null; // Retornar null para continuar con otros modelos
+                console.error(`✗ Error en ${glbPath}:`, error.message);
+                errors.push({ path: glbPath, error: error.message, index: index + 1 });
+                return null;
             });
     }
 
-    // Cargar todos los modelos en SECUENCIA para establecer el origen correcto
+    // Cargar todos los modelos en SECUENCIA
     async function loadAllModels() {
         const models = [];
         
         for (let i = 0; i < glbPaths.length; i++) {
+            if (loadingText) {
+                loadingText.textContent = `Cargando modelo ${i + 1} de ${glbPaths.length}...`;
+            }
+            
             const model = await loadSingleModel(glbPaths[i], i);
             models.push(model);
+            
+            // Pequeña pausa para no saturar el navegador
+            if (i % 5 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
         }
         
         return models;
@@ -2237,9 +2212,13 @@ function loadDefaultGLB() {
                 const groupCenter = groupBbox.getCenter(new THREE.Vector3());
                 const groupSize = groupBbox.getSize(new THREE.Vector3());
 
-                console.log('Bounding box del grupo completo:');
-                console.log(`  Centro: X=${groupCenter.x.toFixed(2)}, Y=${groupCenter.y.toFixed(2)}, Z=${groupCenter.z.toFixed(2)}`);
-                console.log(`  Tamaño: X=${groupSize.x.toFixed(2)}, Y=${groupSize.y.toFixed(2)}, Z=${groupSize.z.toFixed(2)}`);
+                console.log('═══════════════════════════════════');
+                console.log(`✓ ${modelsLoaded} modelos cargados correctamente`);
+                if (errors.length > 0) {
+                    console.log(`✗ ${errors.length} modelos con errores:`);
+                    errors.forEach(err => console.log(`  - Modelo ${err.index}: ${err.error}`));
+                }
+                console.log('═══════════════════════════════════');
 
                 // Posicionar cámara
                 const maxDim = Math.max(groupSize.x, groupSize.y, groupSize.z);
@@ -2254,17 +2233,8 @@ function loadDefaultGLB() {
 
                 if (loadingEl) loadingEl.classList.remove('active');
                 
-                let message = `${modelsLoaded} modelo(s) 3D cargado(s) exitosamente`;
-                if (errors.length > 0) {
-                    message += `. ${errors.length} modelo(s) no se pudieron cargar`;
-                }
+                let message = `${modelsLoaded} de ${glbPaths.length} modelos cargados`;
                 showNotification(message, modelsLoaded > 0 ? 'success' : 'warning');
-
-                // Mostrar errores específicos en consola
-                if (errors.length > 0) {
-                    console.warn('Errores al cargar modelos:');
-                    errors.forEach(err => console.warn(`- ${err.path}: ${err.error}`));
-                }
 
                 // Procesar lotes en 3D si ya están cargados
                 if (Object.keys(lotesData).length > 0) {
@@ -2286,7 +2256,6 @@ function loadDefaultGLB() {
             showNotification('Error crítico al cargar los modelos 3D', 'error');
         });
 }
-
 
 
         function processExcelFileAutomatic() {
@@ -5267,6 +5236,7 @@ function loadDefaultGLB() {
 </body>
 
 </html>
+
 
 
 
