@@ -1,0 +1,4319 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a2b4a">
+    <title>Gestor de Lotes - Móvil</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --sai-dark-blue: #1a2b;
+            --sai-blue: #2c3e5f;
+            --sai-purple: #7b68ee;
+            --sai-light-purple: #9d8df7;
+            --sai-orange: #ff8c42;
+            --sai-light-orange: #ffab73;
+            --sai-white: #ffffff;
+            --sai-light-gray: #f8f9fa;
+            --sai-gray: #e9ecef;
+            --sai-border: #dee2e6;
+            --sai-text: #2c3e50;
+            --sai-text-light: #6c757d;
+            --shadow-sm: 0 2px 4px rgba(26, 43, 74, 0.08);
+            --shadow-md: 0 4px 12px rgba(26, 43, 74, 0.12);
+            --shadow-lg: 0 8px 24px rgba(26, 43, 74, 0.16);
+            --available-color: #10b981;
+            --reserved-color: #f59e0b;
+            --sold-color: #ef4444;
+        }
+
+        body {
+            overflow: hidden;
+            background: var(--sai-light-gray);
+            touch-action: pan-y;
+        }
+
+        /* LAYOUT MÓVIL */
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+        }
+
+        /* HEADER MÓVIL COMPACTO */
+        header {
+            background: linear-gradient(135deg, var(--sai-dark-blue) 0%, var(--sai-blue) 100%);
+            box-shadow: var(--shadow-md);
+            padding: 12px 16px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 56px;
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--sai-purple) 0%, var(--sai-orange) 100%);
+        }
+
+        .logo {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--sai-white);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .logo img {
+            height: 28px;
+            width: auto;
+            flex-shrink: 0;
+        }
+
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+            overflow: hidden;
+        }
+
+        .logo-main {
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .logo-sub {
+            font-size: 9px;
+            font-weight: 400;
+            color: var(--sai-light-orange);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        /* BOTÓN MENÚ HAMBURGUESA */
+        .menu-toggle {
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            color: white;
+            font-size: 18px;
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+
+        .menu-toggle.active {
+            background: var(--sai-orange);
+        }
+
+        /* SELECTOR DE VISTAS MÓVIL */
+        .view-toggle {
+            display: flex;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            overflow: hidden;
+            padding: 3px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .view-button {
+            padding: 6px 10px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            color: rgba(255, 255, 255, 0.8);
+            border-radius: 16px;
+            white-space: nowrap;
+        }
+
+        .view-button.active {
+            background: linear-gradient(135deg, var(--sai-orange) 0%, var(--sai-light-orange) 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(255, 140, 66, 0.4);
+        }
+
+        /* MAPA PRINCIPAL */
+        main {
+            flex: 1;
+            position: relative;
+            margin-top: 56px;
+            overflow: hidden;
+            background: white;
+        }
+
+        #map-viewer {
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+
+        /* COORDENADAS FLOTANTES */
+        .coordinates {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, var(--sai-dark-blue) 0%, var(--sai-blue) 100%);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 500;
+            box-shadow: var(--shadow-lg);
+            z-index: 900;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* LEYENDA COMPACTA */
+        .legend {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: white;
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            z-index: 900;
+            min-width: 130px;
+        }
+
+        .legend-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--sai-dark-blue);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+            font-size: 10px;
+            color: var(--sai-text);
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            border: 2px solid white;
+            box-shadow: var(--shadow-sm);
+            flex-shrink: 0;
+        }
+
+        .legend-color.available {
+            background: var(--available-color);
+        }
+
+        .legend-color.reserved {
+            background: var(--reserved-color);
+        }
+
+        .legend-color.sold {
+            background: var(--sold-color);
+        }
+
+        /* CONTROLES DEL MAPA FLOTANTES */
+        .map-tools {
+            position: absolute;
+            top: 90px;
+            right: 10px;
+            z-index: 900;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+
+        .tool-button {
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border: 1px solid var(--sai-border);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            color: var(--sai-text);
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-md);
+        }
+
+        .tool-button:active {
+            transform: scale(0.95);
+        }
+
+        .tool-button.active {
+            background: linear-gradient(135deg, var(--sai-purple) 0%, var(--sai-light-purple) 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+            }
+        }
+
+
+
+        /* SELECTOR DE UBICACIÓN */
+        .location-marker {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            margin-left: -20px;
+            margin-top: -40px;
+            z-index: 1000;
+            pointer-events: none;
+            animation: markerBounce 0.5s ease-out;
+        }
+
+        @keyframes markerBounce {
+            0% {
+                transform: translateY(-100px);
+                opacity: 0;
+            }
+
+            50% {
+                transform: translateY(10px);
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .location-marker i {
+            font-size: 40px;
+            color: #FF4444;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        /* RUTA DE NAVEGACIÓN */
+        .route-line {
+            stroke: #4285F4;
+            stroke-width: 4;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            animation: dashAnimation 1s linear infinite;
+        }
+
+        @keyframes dashAnimation {
+            to {
+                stroke-dashoffset: -20;
+            }
+        }
+
+        /* PANEL DE INFORMACIÓN DE RUTA */
+        .route-info-panel {
+            position: absolute;
+            top: 70px;
+            /* CAMBIADO: Ahora está arriba, debajo de la leyenda */
+            right: 12px;
+            /* CAMBIADO: A la derecha */
+            left: auto;
+            /* CAMBIADO: Quitamos centrado */
+            transform: none;
+            /* CAMBIADO: Sin transformación */
+            background: white;
+            padding: 8px 12px;
+            /* MÁS COMPACTO */
+            border-radius: 10px;
+            box-shadow: var(--shadow-lg);
+            z-index: 950;
+            width: 140px;
+            /* ANCHO FIJO PEQUEÑO */
+            display: none;
+            border: 2px solid var(--sai-purple);
+        }
+
+        .route-info-panel.active {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .route-info-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--sai-dark-blue);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid var(--sai-purple);
+        }
+
+        .route-info-title i {
+            color: var(--sai-purple);
+            font-size: 12px;
+        }
+
+        .route-info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            font-size: 10px;
+            color: var(--sai-text);
+        }
+
+        .route-info-item i {
+            color: var(--sai-orange);
+            font-size: 12px;
+        }
+
+        .route-info-close {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: none;
+            border: none;
+            color: var(--sai-text-light);
+            cursor: pointer;
+            font-size: 14px;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .route-info-close:active {
+            background: var(--sai-light-gray);
+        }
+
+        /* SIDEBAR MÓVIL (DRAWER) */
+        aside {
+            position: fixed;
+            top: 56px;
+            right: -100%;
+            width: 100%;
+            max-width: 380px;
+            height: calc(100vh - 56px);
+            height: calc(100dvh - 56px);
+            background: white;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+            z-index: 1100;
+            transition: right 0.3s ease;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        aside.open {
+            right: 0;
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 56px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1050;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            padding: 0 0 20px 0;
+        }
+
+        .sidebar-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb {
+            background: var(--sai-purple);
+            border-radius: 10px;
+        }
+
+        /* PANELES */
+        .panel {
+            padding: 16px;
+            border-bottom: 2px solid var(--sai-gray);
+        }
+
+        .panel:last-child {
+            border-bottom: none;
+        }
+
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            color: var(--sai-dark-blue);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            background: white;
+            padding: 8px 0;
+            z-index: 10;
+        }
+
+        .panel-title i {
+            color: var(--sai-orange);
+            font-size: 16px;
+        }
+
+        /* DATOS DEL LOTE */
+        .lot-data-panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            margin-bottom: 12px;
+            border: 1px solid var(--sai-border);
+        }
+
+        .lot-data-header {
+            background: linear-gradient(135deg, var(--sai-purple) 0%, var(--sai-light-purple) 100%);
+            color: white;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .lot-data-header i {
+            font-size: 16px;
+        }
+
+        .lot-data-content {
+            padding: 12px;
+        }
+
+        .lot-data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .lot-data-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 10px;
+            background: var(--sai-light-gray);
+            border-radius: 8px;
+            border-left: 3px solid var(--sai-orange);
+        }
+
+        .lot-data-label {
+            font-size: 9px;
+            color: var(--sai-text-light);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .lot-data-value {
+            font-size: 13px;
+            color: var(--sai-text);
+            font-weight: 700;
+        }
+
+        .lot-plan-container {
+            position: relative;
+            height: 200px;
+            border: 2px solid var(--sai-border);
+            border-radius: 10px;
+            overflow: hidden;
+            background: linear-gradient(135deg, #fafbfc 0%, #f5f7fa 100%);
+        }
+
+        #lot-plan-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .north-arrow {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--sai-text);
+            background: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            border: 2px solid var(--sai-border);
+        }
+
+        .north-arrow i {
+            font-size: 16px;
+            color: var(--sai-orange);
+        }
+
+
+        .notification {
+            position: fixed;
+            top: 90px;
+            right: 25px;
+            background: white;
+            padding: 18px 24px;
+            border-radius: 14px;
+            box-shadow: var(--shadow-lg);
+            z-index: 1500;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            border: 2px solid var(--sai-border);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-left: 5px solid #10b981;
+        }
+
+        .notification.error {
+            border-left: 5px solid #ef4444;
+        }
+
+        .notification.info {
+            border-left: 5px solid var(--sai-purple);
+        }
+
+        .notification-icon {
+            font-size: 22px;
+        }
+
+        .notification.success .notification-icon {
+            color: #10b981;
+        }
+
+        .notification.error .notification-icon {
+            color: #ef4444;
+        }
+
+        .notification.info .notification-icon {
+            color: var(--sai-purple);
+        }
+
+        .notification-message {
+            flex-grow: 1;
+            color: var(--sai-text);
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: var(--sai-text-light);
+            cursor: pointer;
+            font-size: 18px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .notification-close:hover {
+            background: var(--sai-light-gray);
+            color: var(--sai-text);
+        }
+
+
+        /* BOTONES DE CONTROL */
+        .control-button {
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            letter-spacing: 0.3px;
+            touch-action: manipulation;
+        }
+
+        .control-button:active {
+            transform: scale(0.97);
+        }
+
+        .control-button i {
+            font-size: 14px;
+        }
+
+        .control-button.primary {
+            background: linear-gradient(135deg, var(--sai-purple) 0%, var(--sai-light-purple) 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(123, 104, 238, 0.3);
+        }
+
+        .control-button.secondary {
+            background: var(--sai-light-gray);
+            color: var(--sai-text);
+            border: 2px solid var(--sai-border);
+        }
+
+        .control-button.success {
+            background: linear-gradient(135deg, var(--available-color) 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .control-button.tertiary {
+            background: linear-gradient(135deg, var(--sai-orange) 0%, var(--sai-light-orange) 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
+        }
+
+        /* DATA ITEMS */
+        .data-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--sai-gray);
+        }
+
+        .data-item:last-child {
+            border-bottom: none;
+        }
+
+        .data-label {
+            font-size: 11px;
+            color: var(--sai-text-light);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .data-value {
+            font-size: 13px;
+            color: var(--sai-text);
+            font-weight: 700;
+        }
+
+        /* EMPTY STATES */
+        .empty-lote-data {
+            text-align: center;
+            color: var(--sai-text-light);
+            font-style: italic;
+            padding: 30px 16px;
+            font-size: 12px;
+        }
+
+        .empty-lote-data i {
+            font-size: 40px;
+            background: linear-gradient(135deg, var(--sai-purple) 0%, var(--sai-light-purple) 100%);
+            --webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        /* MODALES MÓVILES */
+        .dxf-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(26, 43, 74, 0.85);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .dxf-modal.hidden {
+            display: none;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px 20px 0 0;
+            width: 100%;
+            max-height: 85vh;
+            padding: 0;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            animation: modalSlideUp 0.3s ease-out;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes modalSlideUp {
+            from {
+                transform: translateY(100%);
+            }
+
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, var(--sai-dark-blue) 0%, var(--sai-blue) 100%);
+            border-bottom: 3px solid var(--sai-orange);
+            flex-shrink: 0;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 0.3px;
+        }
+
+        .modal-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:active {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .file-upload-area {
+            border: 3px dashed var(--sai-purple);
+            border-radius: 14px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, rgba(123, 104, 238, 0.05) 0%, rgba(157, 141, 247, 0.05) 100%);
+        }
+
+        .file-upload-area:active {
+            background: linear-gradient(135deg, rgba(123, 104, 238, 0.1) 0%, rgba(157, 141, 247, 0.1) 100%);
+        }
+
+        .upload-icon {
+            font-size: 40px;
+            background: linear-gradient(135deg, var(--sai-purple) 0%, var(--sai-light-purple) 100%);
+            --webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            font-size: 14px;
+            color: var(--sai-text);
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .upload-hint {
+            font-size: 11px;
+            color: var(--sai-text-light);
+        }
+
+        .coordinate-inputs {
+            margin-top: 16px;
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 11px;
+            color: var(--sai-text);
+            margin-bottom: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .coordinate-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid var(--sai-border);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .coordinate-input:focus {
+            outline: none;
+            border-color: var(--sai-purple);
+            box-shadow: 0 0 0 3px rgba(123, 104, 238, 0.1);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            padding: 16px 20px;
+            flex-shrink: 0;
+            border-top: 1px solid var(--sai-border);
+        }
+
+        .modal-button {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            letter-spacing: 0.3px;
+            touch-action: manipulation;
+        }
+
+        .modal-button:active {
+            transform: scale(0.97);
+        }
+
+        .modal-button.primary {
+            background: linear-gradient(135deg, var(--sai-orange) 0%, var(--sai-light-orange) 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
+        }
+
+        .modal-button.primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .modal-button.secondary {
+            background: var(--sai-light-gray);
+            color: var(--sai-text);
+            border: 2px solid var(--sai-border);
+        }
+
+        #file-input,
+        #excel-file-input {
+            display: none;
+        }
+
+        /* LOADING */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(26, 43, 74, 0.9) 0%, rgba(44, 62, 95, 0.9) 100%);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.2);
+            border-top: 5px solid var(--sai-orange);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            margin-top: 16px;
+            font-size: 14px;
+            color: white;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+
+        /* OCULTAR ELEMENTOS NO NECESARIOS EN MÓVIL */
+        .sidebar-shadow,
+        .scroll-indicator {
+            display: none;
+        }
+
+        /* LANDSCAPE MODE */
+        @media (orientation: landscape) and (max-height: 500px) {
+            header {
+                height: 48px;
+                padding: 8px 12px;
+            }
+
+            .logo img {
+                height: 24px;
+            }
+
+            .logo-main {
+                font-size: 12px;
+            }
+
+            .logo-sub {
+                display: none;
+            }
+
+            main {
+                margin-top: 48px;
+            }
+
+            aside {
+                top: 48px;
+                height: calc(100vh - 48px);
+            }
+
+            .coordinates {
+                bottom: 8px;
+                font-size: 10px;
+                padding: 4px 10px;
+            }
+
+            .legend {
+                top: 8px;
+                left: 8px;
+                padding: 6px;
+            }
+
+            .map-tools {
+                top: 8px;
+                right: 8px;
+            }
+
+            .tool-button {
+                width: 36px;
+                height: 36px;
+                font-size: 14px;
+            }
+        }
+
+        /* EXTRA PEQUEÑO */
+        @media (max-width: 360px) {
+            .logo-main {
+                font-size: 12px;
+            }
+
+            .logo-sub {
+                font-size: 8px;
+            }
+
+            .view-button {
+                padding: 5px 8px;
+                font-size: 9px;
+            }
+
+            .panel-title {
+                font-size: 12px;
+            }
+
+            .control-button {
+                font-size: 12px;
+                padding: 10px 14px;
+            }
+
+            .data-label {
+                font-size: 10px;
+            }
+
+            .data-value {
+                font-size: 12px;
+            }
+        }
+
+        /* TABLETS EN PORTRAIT */
+        @media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+            aside {
+                max-width: 420px;
+            }
+
+            .panel {
+                padding: 20px;
+            }
+
+            .lot-plan-container {
+                height: 250px;
+            }
+
+            .control-button {
+                padding: 14px 18px;
+                font-size: 14px;
+            }
+        }
+
+        /* ACCESIBILIDAD TÁCTIL */
+        .touchable {
+            min-height: 44px;
+            min-width: 44px;
+        }
+
+        /* PREVENIR ZOOM EN INPUTS */
+        input[type="text"],
+        input[type="number"],
+        select {
+            font-size: 16px !important;
+        }
+
+        /* SMOOTH SCROLLING */
+        * {
+            -webkit-overflow-scrolling: touch;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <img src="img/LOGO.png" alt="Logo">
+                <div class="logo-text">
+                    <span class="logo-main">Gestor de Lotes</span>
+                    <span class="logo-sub">SAI SOLUCIONES A LA INGENIERÍA</span>
+                </div>
+            </div>
+            <div class="header-controls">
+                <div class="view-toggle">
+                    <button class="view-button active touchable" data-view="map">Mapa</button>
+                    <button class="view-button touchable" data-view="satellite">Satélite</button>
+                    <button class="view-button touchable" data-view="terrain">Relieve</button>
+                </div>
+                <button class="menu-toggle touchable" id="menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <div id="map-viewer"></div>
+            <!-- Coordenadas flotantes -->
+            <div class="coordinates">Lat: 0.0000, Lng: 0.0000</div>
+
+
+
+            <!-- Leyenda -->
+            <div class="legend">
+                <div class="legend-title">ESTADOS</div>
+                <div class="legend-item">
+                    <div class="legend-color available"></div>
+                    <span>Disponible</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color reserved"></div>
+                    <span>Reservado</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color sold"></div>
+                    <span>Vendido</span>
+                </div>
+            </div>
+            <!-- Panel de información de ruta -->
+            <div class="route-info-panel" id="route-info-panel">
+                <button class="route-info-close touchable" id="route-info-close">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="route-info-title">
+                    <i class="fas fa-route"></i>
+                    RUTA CALCULADA
+                </div>
+                <div id="route-info-content">
+                    <div class="route-loading">
+                        <i class="fas fa-spinner"></i>
+                        <p>Calculando mejor ruta...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="map-tools">
+                <button class="tool-button touchable" id="locate-me-button" title="Mi ubicación (GPS)">
+                    <i class="fas fa-crosshairs"></i>
+                </button>
+                <button class="tool-button touchable" id="route-button" title="Trazar ruta al lote"
+                    style="display: none;">
+                    <i class="fas fa-route"></i>
+                </button>
+                <button class="tool-button touchable" id="clear-route-button" title="Limpiar todo"
+                    onclick="clearLocationAndRoute()" style="display: none;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+        </main>
+
+        <!-- Overlay para cerrar sidebar -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <aside id="sidebar">
+            <div class="sidebar-content" id="sidebar-content">
+                <!-- Panel de Datos de Lote -->
+                <div class="panel">
+                    <div class="lot-data-panel" id="lot-data-panel">
+                        <div class="lot-data-header">
+                            <i class="fas fa-chart-area"></i> DATOS DE LOTE
+                        </div>
+                        <div class="lot-data-content">
+                            <div id="lot-data-content">
+                                <div class="empty-lote-data">
+                                    <i class="fas fa-mouse-pointer"></i>
+                                    Selecciona un lote para ver sus datos
+                                </div>
+                            </div>
+                            <div class="lot-plan-container">
+                                <canvas id="lot-plan-canvas"></canvas>
+                                <div class="north-arrow">
+                                    <i class="fas fa-location-arrow"></i>
+                                    <span>N</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <div class="panel">
+                    <div class="panel-title">
+                        <i class="fas fa-chart-pie"></i> Información Adicional
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Total Manzanos:</span>
+                        <span class="data-value" id="total-manzanos">0</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Total Lotes:</span>
+                        <span class="data-value" id="total-lotes">0</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Disponibles:</span>
+                        <span class="data-value" id="available-lotes" style="color: var(--available-color);">0</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Reservados:</span>
+                        <span class="data-value" id="reserved-lotes" style="color: var(--reserved-color);">0</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Vendidos:</span>
+                        <span class="data-value" id="sold-lotes" style="color: var(--sold-color);">0</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Área Total:</span>
+                        <span class="data-value" id="total-area">0.00 ha</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Estado:</span>
+                        <span class="data-value" style="color: #10b981;">● Activo</span>
+                    </div>
+                </div>
+
+
+
+            </div>
+        </aside>
+    </div>
+
+    <!-- Modal DXF -->
+    <div class="dxf-modal hidden" id="dxf-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Importar archivo DXF</span>
+                <button class="modal-close touchable" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="file-upload-area" id="file-upload-area">
+                    <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                    <div class="upload-text">Arrastra tu archivo DXF aquí</div>
+                    <div class="upload-hint">o toca para seleccionar</div>
+                </div>
+                <input type="file" id="file-input" accept=".dxf" />
+                <div class="coordinate-inputs">
+                    <div class="input-group">
+                        <label class="input-label">Sistema de coordenadas</label>
+                        <select class="coordinate-input" id="coord-system">
+                            <option value="utm">UTM (Universal Transverse Mercator)</option>
+                            <option value="latlong">Lat/Lng (Geográficas)</option>
+                        </select>
+                    </div>
+                    <div class="input-group" id="utm-zone-group">
+                        <label class="input-label">Zona UTM</label>
+                        <input type="text" class="coordinate-input" id="utm-zone"
+                            placeholder="Ej: 20 (para Bolivia: 19, 20 o 21)">
+                    </div>
+                    <div class="input-group" id="utm-hemisphere-group">
+                        <label class="input-label">Hemisferio</label>
+                        <select class="coordinate-input" id="utm-hemisphere">
+                            <option value="south">Sur</option>
+                            <option value="north">Norte</option>
+                        </select>
+                    </div>
+                    <div class="input-group" id="ref-lat-group" style="display:none;">
+                        <label class="input-label">Punto de referencia</label>
+                        <input type="text" class="coordinate-input" id="ref-lat" placeholder="Latitud (ej: -21.5355)">
+                    </div>
+                    <div class="input-group" id="ref-lng-group" style="display:none;">
+                        <input type="text" class="coordinate-input" id="ref-lng" placeholder="Longitud (ej: -63.6714)">
+                    </div>
+                    <div class="input-group" id="scale-group" style="display:none;">
+                        <label class="input-label">Escala</label>
+                        <input type="number" class="coordinate-input" id="scale-input" placeholder="1.0" value="1.0"
+                            step="0.0001">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-button secondary touchable" id="cancel-button">Cancelar</button>
+                <button class="modal-button primary touchable" id="process-button" disabled>Procesar DXF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Excel -->
+    <div class="dxf-modal hidden" id="excel-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Importar archivo Excel</span>
+                <button class="modal-close touchable" id="excel-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="file-upload-area" id="excel-upload-area">
+                    <div class="upload-icon"><i class="fas fa-file-excel"></i></div>
+                    <div class="upload-text">Arrastra tu archivo Excel aquí</div>
+                    <div class="upload-hint">o toca para seleccionar (.xlsx, .xls)</div>
+                </div>
+                <input type="file" id="excel-file-input" accept=".xlsx,.xls" />
+                <div class="coordinate-inputs">
+                    <div class="input-group">
+                        <label class="input-label">Fila de encabezados</label>
+                        <input type="number" class="coordinate-input" id="header-row" value="1" min="1">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Columna de Código de Lote</label>
+                        <input type="text" class="coordinate-input" id="lote-code-column" value="A" placeholder="Ej: A">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Columna de Precio</label>
+                        <input type="text" class="coordinate-input" id="price-column" value="D" placeholder="Ej: D">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Columna de Estado</label>
+                        <input type="text" class="coordinate-input" id="status-column" value="E" placeholder="Ej: E">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-button secondary touchable" id="excel-cancel-button">Cancelar</button>
+                <button class="modal-button primary touchable" id="excel-process-button" disabled>Procesar
+                    Excel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Procesando archivo...</div>
+    </div>
+
+    <div class="notification" id="notification">
+        <div class="notification-icon">
+            <i class="fas fa-info-circle"></i>
+        </div>
+        <div class="notification-message"></div>
+        <button class="notification-close touchable" id="notification-close">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script>
+        // FUNCIONALIDAD DEL MENÚ HAMBURGUESA MÓVIL
+        document.addEventListener('DOMContentLoaded', function () {
+            const menuToggle = document.getElementById('menu-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+            function openSidebar() {
+                sidebar.classList.add('open');
+                sidebarOverlay.classList.add('active');
+                menuToggle.classList.add('active');
+                menuToggle.innerHTML = '<i class="fas fa-times"></i>';
+            }
+
+            function closeSidebar() {
+                sidebar.classList.remove('open');
+                sidebarOverlay.classList.remove('active');
+                menuToggle.classList.remove('active');
+                menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+            }
+
+            menuToggle.addEventListener('click', function () {
+                if (sidebar.classList.contains('open')) {
+                    closeSidebar();
+                } else {
+                    openSidebar();
+                }
+            });
+
+            sidebarOverlay.addEventListener('click', function () {
+                closeSidebar();
+            });
+
+            // Cerrar sidebar al seleccionar un lote (opcional)
+            document.addEventListener('lotSelected', function () {
+                // Puedes descomentar esto si quieres que se cierre automáticamente
+                // closeSidebar();
+            });
+
+            // PREVENIR ZOOM EN DOUBLE TAP
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function (event) {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 300) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+
+            // MEJORAR EXPERIENCIA TÁCTIL EN BOTONES
+            const touchableElements = document.querySelectorAll('.touchable, .control-button, .modal-button');
+            touchableElements.forEach(element => {
+                element.addEventListener('touchstart', function () {
+                    this.style.opacity = '0.7';
+                });
+                element.addEventListener('touchend', function () {
+                    this.style.opacity = '1';
+                });
+                element.addEventListener('touchcancel', function () {
+                    this.style.opacity = '1';
+                });
+            });
+        });
+
+        // Parser DXF
+        if (typeof DxfParser === 'undefined') {
+            window.DxfParser = function () {
+                this.parseSync = function (dxfString) {
+                    const lines = dxfString.split('\n').map(line => line.trim());
+                    const entities = [];
+                    let i = 0;
+                    while (i < lines.length) {
+                        if (lines[i] === '0' && lines[i + 1] === 'SECTION') {
+                            i = this.parseSection(lines, i, entities);
+                        } else { i++; }
+                    }
+                    console.log('Entidades encontradas:', entities.length);
+                    return { entities: entities };
+                };
+
+                this.parseSection = function (lines, startIndex, entities) {
+                    let i = startIndex + 2;
+                    while (i < lines.length) {
+                        if (lines[i] === '0') {
+                            if (lines[i + 1] === 'ENDSEC') return i + 2;
+                            const entityType = lines[i + 1];
+                            if (entityType === 'LINE') i = this.parseLine(lines, i + 2, entities);
+                            else if (entityType === 'LWPOLYLINE') i = this.parseLWPolyline(lines, i + 2, entities);
+                            else if (entityType === 'POLYLINE') i = this.parsePolyline(lines, i + 2, entities);
+                            else if (entityType === 'CIRCLE') i = this.parseCircle(lines, i + 2, entities);
+                            else if (entityType === 'ARC') i = this.parseArc(lines, i + 2, entities);
+                            else if (entityType === 'TEXT' || entityType === 'MTEXT') i = this.parseText(lines, i + 2, entities, entityType);
+                            else if (entityType === 'DIMENSION') i = this.skipDimension(lines, i + 2);
+                            else i += 2;
+                        } else { i++; }
+                    }
+                    return i;
+                };
+
+                this.skipDimension = function (lines, startIndex) {
+                    let i = startIndex;
+                    while (i < lines.length && lines[i] !== '0') {
+                        i += 2;
+                    }
+                    return i;
+                };
+
+                this.parseLine = function (lines, startIndex, entities) {
+                    const entity = { type: 'LINE', vertices: [{}, {}] };
+                    let i = startIndex;
+                    while (i < lines.length && lines[i] !== '0') {
+                        const code = lines[i], value = lines[i + 1];
+                        if (code === '8') entity.layer = value;
+                        else if (code === '62') entity.color = parseInt(value);
+                        else if (code === '10') entity.vertices[0].x = parseFloat(value);
+                        else if (code === '20') entity.vertices[0].y = parseFloat(value);
+                        else if (code === '11') entity.vertices[1].x = parseFloat(value);
+                        else if (code === '21') entity.vertices[1].y = parseFloat(value);
+                        else if (code === '370') entity.lineweight = parseInt(value);
+                        i += 2;
+                    }
+                    if (entity.vertices[0].x !== undefined && entity.vertices[1].x !== undefined) {
+                        entities.push(entity);
+                    }
+                    return i;
+                };
+
+                this.parseLWPolyline = function (lines, startIndex, entities) {
+                    const entity = { type: 'LWPOLYLINE', vertices: [], bulges: [] };
+                    let i = startIndex, currentVertex = null, currentBulge = 0, closed = false;
+                    while (i < lines.length && lines[i] !== '0') {
+                        const code = lines[i], value = lines[i + 1];
+                        if (code === '8') entity.layer = value;
+                        else if (code === '62') entity.color = parseInt(value);
+                        else if (code === '370') entity.lineweight = parseInt(value);
+                        else if (code === '70') closed = (parseInt(value) & 1) === 1;
+                        else if (code === '10') {
+                            if (currentVertex && currentVertex.x !== undefined && currentVertex.y !== undefined) {
+                                entity.vertices.push(currentVertex);
+                                entity.bulges.push(currentBulge);
+                                currentBulge = 0;
+                            }
+                            currentVertex = { x: parseFloat(value) };
+                        }
+                        else if (code === '20') { if (currentVertex) currentVertex.y = parseFloat(value); }
+                        else if (code === '42') { currentBulge = parseFloat(value); }
+                        i += 2;
+                    }
+                    if (currentVertex && currentVertex.x !== undefined && currentVertex.y !== undefined) {
+                        entity.vertices.push(currentVertex);
+                        entity.bulges.push(currentBulge);
+                    }
+                    entity.closed = closed;
+                    if (entity.vertices.length > 0) {
+                        while (entity.bulges.length < entity.vertices.length) entity.bulges.push(0);
+                        entities.push(entity);
+                    }
+                    return i;
+                };
+
+                this.parsePolyline = function (lines, startIndex, entities) {
+                    const entity = { type: 'POLYLINE', vertices: [] };
+                    let i = startIndex, closed = false;
+                    while (i < lines.length && lines[i] !== '0') {
+                        const code = lines[i], value = lines[i + 1];
+                        if (code === '8') entity.layer = value;
+                        else if (code === '62') entity.color = parseInt(value);
+                        else if (code === '70') closed = (parseInt(value) & 1) === 1;
+                        else if (code === '370') entity.lineweight = parseInt(value);
+                        i += 2;
+                    }
+                    while (i < lines.length) {
+                        if (lines[i] === '0' && lines[i + 1] === 'VERTEX') {
+                            const vertex = {};
+                            i += 2;
+                            while (i < lines.length && lines[i] !== '0') {
+                                const code = lines[i], value = lines[i + 1];
+                                if (code === '10') vertex.x = parseFloat(value);
+                                else if (code === '20') vertex.y = parseFloat(value);
+                                i += 2;
+                            }
+                            if (vertex.x !== undefined) entity.vertices.push(vertex);
+                        } else if (lines[i] === '0' && lines[i + 1] === 'SEQEND') {
+                            i += 2; break;
+                        } else { i++; }
+                    }
+                    entity.closed = closed;
+                    if (entity.vertices.length > 0) entities.push(entity);
+                    return i;
+                };
+
+                this.parseCircle = function (lines, startIndex, entities) {
+                    const entity = { type: 'CIRCLE' };
+                    let i = startIndex;
+                    while (i < lines.length && lines[i] !== '0') {
+                        const code = lines[i], value = lines[i + 1];
+                        if (code === '8') entity.layer = value;
+                        else if (code === '62') entity.color = parseInt(value);
+                        else if (code === '10') entity.x = parseFloat(value);
+                        else if (code === '20') entity.y = parseFloat(value);
+                        else if (code === '40') entity.radius = parseFloat(value);
+                        else if (code === '370') entity.lineweight = parseInt(value);
+                        i += 2;
+                    }
+                    if (entity.x !== undefined && entity.radius !== undefined) entities.push(entity);
+                    return i;
+                };
+
+                this.parseArc = function (lines, startIndex, entities) {
+                    const entity = { type: 'ARC' };
+                    let i = startIndex;
+                    while (i < lines.length && lines[i] !== '0') {
+                        const code = lines[i], value = lines[i + 1];
+                        if (code === '8') entity.layer = value;
+                        else if (code === '62') entity.color = parseInt(value);
+                        else if (code === '10') entity.x = parseFloat(value);
+                        else if (code === '20') entity.y = parseFloat(value);
+                        else if (code === '40') entity.radius = parseFloat(value);
+                        else if (code === '50') entity.startAngle = parseFloat(value) * Math.PI / 180;
+                        else if (code === '51') entity.endAngle = parseFloat(value) * Math.PI / 180;
+                        else if (code === '370') entity.lineweight = parseInt(value);
+                        i += 2;
+                    }
+                    if (entity.x !== undefined && entity.radius !== undefined) entities.push(entity);
+                    return i;
+                };
+
+                this.parseText = function (lines, startIndex, entities, type) {
+                    const entity = { type: type };
+                    let i = startIndex;
+                    while (i < lines.length && lines[i] !== '0') {
+                        const code = lines[i], value = lines[i + 1];
+                        if (code === '8') entity.layer = value;
+                        else if (code === '62') entity.color = parseInt(value);
+                        else if (code === '10') entity.x = parseFloat(value);
+                        else if (code === '20') entity.y = parseFloat(value);
+                        else if (code === '11') entity.x2 = parseFloat(value);
+                        else if (code === '21') entity.y2 = parseFloat(value);
+                        else if (code === '1') entity.text = value;
+                        else if (code === '40') entity.height = parseFloat(value);
+                        else if (code === '50') entity.rotation = parseFloat(value);
+                        else if (code === '41') entity.widthFactor = parseFloat(value);
+                        else if (code === '7') entity.style = value;
+                        else if (code === '72') entity.halign = parseInt(value);
+                        else if (code === '73') entity.valign = parseInt(value);
+                        i += 2;
+                    }
+                    if (entity.x !== undefined && entity.text) {
+                        entity.position = { x: entity.x, y: entity.y };
+                        if (entity.x2 !== undefined && entity.y2 !== undefined) {
+                            entity.position2 = { x: entity.x2, y: entity.y2 };
+                        }
+                        entities.push(entity);
+                    }
+                    return i;
+                };
+            };
+        }
+
+        // Variables globales
+        let map;
+        let dxfLayer;
+        let lotesLayer;
+        let manzanosLayer;
+        let selectedLote = null;
+        let manzanosData = {};
+        let lotesData = {};
+        let dxfData = null;
+        let allBounds = null;
+        let reservations = [];
+        let autoLoadAttempted = false;
+        let excelData = null;
+        let excelLoaded = false;
+
+
+        let userLocation = null;
+        let userMarker = null;
+        let routeLayer = null;
+        let routingControl = null;
+        let currentRoute = null;
+        let routeDisplayed = false;
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function () {
+            loadDefaultDXF();
+            initMap();
+            setupEventListeners();
+            setupScrollBehavior();
+        });
+
+
+        function loadDefaultDXF() {
+            // Evitar múltiples intentos de carga
+            if (window.autoLoadAttempted) return;
+            window.autoLoadAttempted = true;
+
+            console.log("Iniciando carga automática del archivo DXF...");
+
+            // Establecer valores predeterminados para zona 19 sur
+            const coordSystem = document.getElementById('coord-system');
+            const utmZone = document.getElementById('utm-zone');
+            const utmHemisphere = document.getElementById('utm-hemisphere');
+
+            if (!coordSystem || !utmZone || !utmHemisphere) {
+                console.error('Elementos del formulario no encontrados');
+                return;
+            }
+
+            coordSystem.value = 'utm';
+            utmZone.value = '19';
+            utmHemisphere.value = 'south';
+
+            // Mostrar los campos apropiados
+            const elementsToShow = ['utm-zone-group', 'utm-hemisphere-group'];
+            const elementsToHide = ['ref-lat-group', 'ref-lng-group', 'scale-group'];
+
+            elementsToShow.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'block';
+            });
+
+            elementsToHide.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
+            // Mostrar indicador de carga
+            const loadingEl = document.getElementById('loading');
+            const loadingText = document.querySelector('.loading-text');
+
+            if (loadingEl) loadingEl.classList.add('active');
+            if (loadingText) loadingText.textContent = 'Cargando plano urbanización...';
+
+            // Intentar cargar el archivo DXF
+            const dxfPath = 'img/VISOR.dxf';
+
+            fetch(dxfPath)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
+                    }
+                    return response.text();
+                })
+                .then(dxfText => {
+                    console.log("Archivo DXF cargado exitosamente");
+
+                    // Verificar que el texto no esté vacío
+                    if (!dxfText || dxfText.trim().length === 0) {
+                        throw new Error('El archivo DXF está vacío');
+                    }
+
+                    // Verificar que DxfParser esté disponible
+                    if (typeof DxfParser === 'undefined') {
+                        throw new Error('La librería DXF Parser no está cargada');
+                    }
+
+                    const parser = new DxfParser();
+                    const parsedData = parser.parseSync(dxfText);
+
+                    // Validar que el parseo fue exitoso
+                    if (!parsedData || !parsedData.entities) {
+                        throw new Error('El archivo DXF no contiene datos válidos');
+                    }
+
+                    console.log("Archivo DXF parseado exitosamente");
+                    console.log(`Entidades encontradas: ${parsedData.entities.length}`);
+
+                    // Guardar en variable global si es necesario
+                    if (typeof window.dxfData !== 'undefined') {
+                        window.dxfData = parsedData;
+                    }
+
+                    // Procesar el archivo DXF
+                    processDXF(parsedData);
+
+                    if (loadingEl) loadingEl.classList.remove('active');
+                    showNotification('Archivo DXF cargado automáticamente', 'success');
+
+                    // DESPUÉS DE CARGAR EL DXF, CARGAR EL EXCEL AUTOMÁTICAMENTE
+                    setTimeout(() => {
+                        loadDefaultExcel();
+                    }, 1000);
+                })
+                .catch(error => {
+                    console.error('Error en la carga automática del DXF:', error);
+
+                    if (loadingEl) loadingEl.classList.remove('active');
+
+                    // Mensaje más específico según el tipo de error
+                    let errorMessage = 'No se pudo cargar el archivo DXF. ';
+
+                    if (error.message.includes('HTTP')) {
+                        errorMessage += 'Verifica que el archivo existe en img/VISOR.dxf';
+                    } else if (error.message.includes('Parser')) {
+                        errorMessage += 'Asegúrate de que la librería DXF Parser está incluida.';
+                    } else if (error.message.includes('válidos')) {
+                        errorMessage += 'El archivo parece estar corrupto o vacío.';
+                    } else {
+                        errorMessage += 'Por favor, impórtelo manualmente.';
+                    }
+
+                    showNotification(errorMessage, 'error');
+                });
+        }
+
+        function loadDefaultExcel() {
+            console.log("Iniciando carga automática del archivo Excel...");
+
+            // Verificar que los lotes estén cargados
+            if (Object.keys(lotesData).length === 0) {
+                console.warn('No hay lotes cargados. No se puede procesar el Excel.');
+                showNotification('Primero debes cargar el archivo DXF', 'error');
+                return;
+            }
+
+            const loadingEl = document.getElementById('loading');
+            const loadingText = document.querySelector('.loading-text');
+
+            if (loadingEl) loadingEl.classList.add('active');
+            if (loadingText) loadingText.textContent = 'Cargando datos de Excel...';
+
+            const excelPath = 'img/DATOS.xlsx';
+
+            fetch(excelPath)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(arrayBuffer => {
+                    console.log("Archivo Excel cargado exitosamente");
+
+                    // Verificar que XLSX esté disponible
+                    if (typeof XLSX === 'undefined') {
+                        throw new Error('La librería SheetJS (XLSX) no está cargada');
+                    }
+
+                    const data = new Uint8Array(arrayBuffer);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    // Tomar la primera hoja
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+
+                    // Convertir a array de arrays
+                    excelData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    console.log("Archivo Excel parseado exitosamente");
+                    console.log(`Filas encontradas: ${excelData.length}`);
+
+                    // Establecer configuración por defecto
+                    document.getElementById('header-row').value = '1';
+                    document.getElementById('lote-code-column').value = 'A';
+                    document.getElementById('price-column').value = 'D';
+                    document.getElementById('status-column').value = 'E';
+
+                    // Procesar automáticamente el Excel
+                    processExcelFileAutomatic();
+                })
+                .catch(error => {
+                    console.error('Error en la carga automática del Excel:', error);
+
+                    if (loadingEl) loadingEl.classList.remove('active');
+
+                    let errorMessage = 'No se pudo cargar el archivo Excel. ';
+
+                    if (error.message.includes('HTTP')) {
+                        errorMessage += 'Verifica que el archivo existe en img/DATOS.xlsx';
+                    } else if (error.message.includes('XLSX')) {
+                        errorMessage += 'Asegúrate de que la librería SheetJS está incluida.';
+                    } else {
+                        errorMessage += 'Por favor, impórtelo manualmente.';
+                    }
+
+                    showNotification(errorMessage, 'info');
+                });
+        }
+
+        function processExcelFileAutomatic() {
+            if (!excelData) return;
+
+            try {
+                // Obtener configuración de columnas (valores por defecto)
+                const loteCodeColumn = 'A';
+                const priceColumn = 'D';
+                const statusColumn = 'E';
+                const headerRow = 0; // Primera fila (índice 0)
+
+                // Convertir letras de columna a índices numéricos
+                const colToIndex = (col) => {
+                    let index = 0;
+                    for (let i = 0; i < col.length; i++) {
+                        index = index * 26 + (col.charCodeAt(i) - 'A'.charCodeAt(0) + 1);
+                    }
+                    return index - 1;
+                };
+
+                const loteCodeIndex = colToIndex(loteCodeColumn);
+                const priceIndex = colToIndex(priceColumn);
+                const statusIndex = colToIndex(statusColumn);
+
+                // Procesar datos del Excel
+                const excelLotesData = {};
+
+                for (let i = headerRow + 1; i < excelData.length; i++) {
+                    const row = excelData[i];
+                    if (!row || row.length <= Math.max(loteCodeIndex, priceIndex, statusIndex)) continue;
+
+                    const loteCode = row[loteCodeIndex];
+                    const price = parseFloat(row[priceIndex]) || 0;
+                    const status = row[statusIndex] ? row[statusIndex].toString().toLowerCase() : 'disponible';
+
+                    if (!loteCode) continue;
+
+                    // Normalizar el estado
+                    let normalizedStatus = 'available';
+                    if (status.includes('reserv')) {
+                        normalizedStatus = 'reserved';
+                    } else if (status.includes('vend')) {
+                        normalizedStatus = 'sold';
+                    }
+
+                    excelLotesData[loteCode.toString().trim()] = {
+                        price: price,
+                        status: normalizedStatus
+                    };
+                }
+
+                // Función para normalizar nombres de lotes para comparación
+                const normalizeLoteName = (name) => {
+                    return name.toString()
+                        .toUpperCase()
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                };
+
+                // Aplicar datos del Excel a los lotes
+                let updatedCount = 0;
+                let notFoundCount = 0;
+                const notFoundLotes = [];
+
+                Object.keys(lotesData).forEach(loteName => {
+                    const normalizedLoteName = normalizeLoteName(loteName);
+
+                    // Buscar coincidencia en el Excel
+                    let found = false;
+                    for (const excelCode in excelLotesData) {
+                        const normalizedExcelCode = normalizeLoteName(excelCode);
+
+                        if (normalizedLoteName === normalizedExcelCode) {
+                            lotesData[loteName].price = excelLotesData[excelCode].price;
+                            lotesData[loteName].status = excelLotesData[excelCode].status;
+                            updateLoteStyle(lotesData[loteName]);
+                            updatedCount++;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (!found) {
+                        notFoundCount++;
+                        notFoundLotes.push(loteName);
+                    }
+                });
+
+                excelLoaded = true;
+                updateStatistics();
+
+                const loadingEl = document.getElementById('loading');
+                if (loadingEl) loadingEl.classList.remove('active');
+
+                if (updatedCount > 0) {
+                    showNotification(`Datos cargados: ${updatedCount} lotes actualizados automáticamente`, 'success');
+
+                    if (notFoundCount > 0) {
+                        console.warn(`${notFoundCount} lotes del DXF no se encontraron en el Excel:`, notFoundLotes);
+                    }
+                } else {
+                    showNotification('No se encontraron coincidencias entre el DXF y el Excel', 'error');
+                    console.log('Lotes en DXF:', Object.keys(lotesData));
+                    console.log('Códigos en Excel:', Object.keys(excelLotesData));
+                }
+
+                // Si hay un lote seleccionado, actualizar su vista
+                if (selectedLote) {
+                    showLoteDetails(selectedLote);
+                }
+
+            } catch (error) {
+                console.error('Error procesando Excel automático:', error);
+                const loadingEl = document.getElementById('loading');
+                if (loadingEl) loadingEl.classList.remove('active');
+                showNotification('Error al procesar el archivo Excel automáticamente', 'error');
+            }
+        }
+
+        function initMap() {
+            map = L.map('map-viewer', {
+                center: [-21.5355, -63.6714],
+                zoom: 13,
+                zoomControl: false,
+                maxZoom: 22,
+                minZoom: 3
+            });
+
+            L.control.zoom({ position: 'topright' }).addTo(map);
+
+            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap',
+                maxZoom: 22,
+                maxNativeZoom: 19
+            });
+
+            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '© Esri',
+                maxZoom: 22,
+                maxNativeZoom: 19
+            });
+
+            const terrainLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenTopoMap',
+                maxZoom: 17
+            });
+
+            osmLayer.addTo(map);
+            let currentLayer = osmLayer;
+
+            manzanosLayer = L.featureGroup().addTo(map);
+            lotesLayer = L.featureGroup().addTo(map);
+            dxfLayer = L.featureGroup().addTo(map);
+
+            manzanosLayer.setZIndex(100);
+            lotesLayer.setZIndex(200);
+            dxfLayer.setZIndex(150);
+
+            document.querySelectorAll('.view-button').forEach(button => {
+                button.addEventListener('click', function () {
+                    document.querySelectorAll('.view-button').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    const view = this.getAttribute('data-view');
+                    if (map.hasLayer(currentLayer)) map.removeLayer(currentLayer);
+                    if (view === 'map') currentLayer = osmLayer;
+                    else if (view === 'satellite') currentLayer = satelliteLayer;
+                    else if (view === 'terrain') currentLayer = terrainLayer;
+                    map.addLayer(currentLayer);
+                });
+            });
+
+            map.on('mousemove', function (e) {
+                document.querySelector('.coordinates').textContent =
+                    `Lat: ${e.latlng.lat.toFixed(4)}, Lng: ${e.latlng.lng.toFixed(4)}`;
+            });
+        }
+
+        function setupEventListeners() {
+            // Botón de ubicación GPS
+            document.getElementById('locate-me-button').addEventListener('click', getUserLocationGPS);
+
+            // Botón de ruta
+            document.getElementById('route-button').addEventListener('click', drawRouteToLote);
+
+            // Botón de limpiar ruta
+            document.getElementById('clear-route-button').addEventListener('click', clearRoute);
+
+            // Cerrar panel de ruta
+            document.getElementById('route-info-close').addEventListener('click', function () {
+                document.getElementById('route-info-panel').classList.remove('active');
+            });
+
+
+            // Modal DXF
+            document.getElementById('modal-close').addEventListener('click', hideDxfModal);
+            document.getElementById('cancel-button').addEventListener('click', hideDxfModal);
+
+
+
+            // Control para cambiar entre UTM y Lat/Lng
+            document.getElementById('coord-system').addEventListener('change', function () {
+                const isUTM = this.value === 'utm';
+                document.getElementById('utm-zone-group').style.display = isUTM ? 'block' : 'none';
+                document.getElementById('utm-hemisphere-group').style.display = isUTM ? 'block' : 'none';
+                document.getElementById('ref-lat-group').style.display = isUTM ? 'none' : 'block';
+                document.getElementById('ref-lng-group').style.display = isUTM ? 'none' : 'block';
+                document.getElementById('scale-group').style.display = isUTM ? 'none' : 'block';
+            });
+
+            // File upload
+            const fileUploadArea = document.getElementById('file-upload-area');
+            const fileInput = document.getElementById('file-input');
+
+            fileUploadArea.addEventListener('click', () => fileInput.click());
+            fileUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileUploadArea.classList.add('dragover');
+            });
+            fileUploadArea.addEventListener('dragleave', () => fileUploadArea.classList.remove('dragover'));
+            fileUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileUploadArea.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]);
+            });
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
+            });
+
+
+
+            // Botón de procesar DXF
+            document.getElementById('process-button').addEventListener('click', processDxfFile);
+
+
+
+            // Notificación
+            document.getElementById('notification-close').addEventListener('click', hideNotification);
+        }
+
+        function setupScrollBehavior() {
+            const sidebarContent = document.getElementById('sidebar-content');
+            const scrollIndicator = document.getElementById('scroll-indicator');
+            const sidebarShadow = document.getElementById('sidebar-shadow');
+
+            function checkScroll() {
+                const hasScroll = sidebarContent.scrollHeight > sidebarContent.clientHeight;
+                const isScrolled = sidebarContent.scrollTop > 10;
+
+
+            }
+
+            sidebarContent.addEventListener('scroll', function () {
+                checkScroll();
+                clearTimeout(this.scrollTimeout);
+                this.scrollTimeout = setTimeout(() => {
+                    const maxScroll = this.scrollHeight - this.clientHeight;
+                    if (this.scrollTop > maxScroll - 50) {
+                        this.scrollTo({
+                            top: maxScroll,
+                            behavior: 'smooth'
+                        });
+                    }
+                }, 150);
+            });
+
+            checkScroll();
+            window.addEventListener('resize', checkScroll);
+
+            let indicatorTimeout;
+            sidebarContent.addEventListener('scroll', function () {
+                clearTimeout(indicatorTimeout);
+                indicatorTimeout = setTimeout(() => {
+
+                }, 3000);
+            });
+        }
+
+        function showDxfModal() {
+            document.getElementById('dxf-modal').classList.remove('hidden');
+        }
+
+        function hideDxfModal() {
+            document.getElementById('dxf-modal').classList.add('hidden');
+        }
+
+        function showExcelModal() {
+            if (Object.keys(lotesData).length === 0) {
+                showNotification('Primero debes importar un archivo DXF con lotes', 'error');
+                return;
+            }
+            document.getElementById('excel-modal').classList.remove('hidden');
+        }
+
+        function hideExcelModal() {
+            document.getElementById('excel-modal').classList.add('hidden');
+        }
+
+        function handleExcelFileSelect(file) {
+            const validExtensions = ['.xlsx', '.xls'];
+            const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+            if (!validExtensions.includes(fileExtension)) {
+                showNotification('Por favor selecciona un archivo Excel (.xlsx o .xls)', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    // Tomar la primera hoja
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+
+                    // Convertir a array de arrays
+                    excelData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    document.querySelector('#excel-upload-area .upload-text').textContent = file.name;
+                    document.querySelector('#excel-upload-area .upload-hint').textContent = 'Archivo cargado exitosamente';
+                    document.getElementById('excel-process-button').disabled = false;
+
+                    showNotification('Archivo Excel cargado. Verifica la configuración de columnas.', 'info');
+
+                } catch (err) {
+                    console.error('Error completo:', err);
+                    showNotification('Error al leer el archivo Excel: ' + err.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processExcelFile() {
+            if (!excelData) return;
+
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('excel-modal').classList.add('hidden');
+
+            setTimeout(() => {
+                try {
+                    // Obtener configuración de columnas
+                    const loteCodeColumn = document.getElementById('lote-code-column').value.toUpperCase();
+                    const priceColumn = document.getElementById('price-column').value.toUpperCase();
+                    const statusColumn = document.getElementById('status-column').value.toUpperCase();
+                    const headerRow = parseInt(document.getElementById('header-row').value) - 1;
+
+                    // Convertir letras de columna a índices numéricos
+                    const colToIndex = (col) => {
+                        let index = 0;
+                        for (let i = 0; i < col.length; i++) {
+                            index = index * 26 + (col.charCodeAt(i) - 'A'.charCodeAt(0) + 1);
+                        }
+                        return index - 1;
+                    };
+
+                    const loteCodeIndex = colToIndex(loteCodeColumn);
+                    const priceIndex = colToIndex(priceColumn);
+                    const statusIndex = colToIndex(statusColumn);
+
+                    // Procesar datos del Excel
+                    const excelLotesData = {};
+
+                    for (let i = headerRow + 1; i < excelData.length; i++) {
+                        const row = excelData[i];
+                        if (!row || row.length <= Math.max(loteCodeIndex, priceIndex, statusIndex)) continue;
+
+                        const loteCode = row[loteCodeIndex];
+                        const price = parseFloat(row[priceIndex]) || 0;
+                        const status = row[statusIndex] ? row[statusIndex].toString().toLowerCase() : 'disponible';
+
+                        if (!loteCode) continue;
+
+                        // Normalizar el estado
+                        let normalizedStatus = 'available';
+                        if (status.includes('reserv')) {
+                            normalizedStatus = 'reserved';
+                        } else if (status.includes('vend')) {
+                            normalizedStatus = 'sold';
+                        }
+
+                        excelLotesData[loteCode.toString().trim()] = {
+                            price: price,
+                            status: normalizedStatus
+                        };
+                    }
+
+                    // Función para normalizar nombres de lotes para comparación
+                    const normalizeLoteName = (name) => {
+                        return name.toString()
+                            .toUpperCase()
+                            .replace(/\s+/g, ' ')
+                            .trim();
+                    };
+
+                    // Aplicar datos del Excel a los lotes
+                    let updatedCount = 0;
+                    let notFoundCount = 0;
+                    const notFoundLotes = [];
+
+                    Object.keys(lotesData).forEach(loteName => {
+                        const normalizedLoteName = normalizeLoteName(loteName);
+
+                        // Buscar coincidencia en el Excel
+                        let found = false;
+                        for (const excelCode in excelLotesData) {
+                            const normalizedExcelCode = normalizeLoteName(excelCode);
+
+                            if (normalizedLoteName === normalizedExcelCode) {
+                                lotesData[loteName].price = excelLotesData[excelCode].price;
+                                lotesData[loteName].status = excelLotesData[excelCode].status;
+                                updateLoteStyle(lotesData[loteName]);
+                                updatedCount++;
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (!found) {
+                            notFoundCount++;
+                            notFoundLotes.push(loteName);
+                        }
+                    });
+
+                    excelLoaded = true;
+                    updateStatistics();
+
+                    document.getElementById('loading').classList.remove('active');
+
+                    if (updatedCount > 0) {
+                        showNotification(`Se actualizaron ${updatedCount} lotes con datos del Excel`, 'success');
+
+                        if (notFoundCount > 0) {
+                            console.warn(`${notFoundCount} lotes del DXF no se encontraron en el Excel:`, notFoundLotes);
+                        }
+                    } else {
+                        showNotification('No se encontraron coincidencias. Verifica que los códigos de lote en el Excel coincidan con los nombres de capa en el DXF.', 'error');
+                        console.log('Lotes en DXF:', Object.keys(lotesData));
+                        console.log('Códigos en Excel:', Object.keys(excelLotesData));
+                    }
+
+                    // Si hay un lote seleccionado, actualizar su vista
+                    if (selectedLote) {
+                        showLoteDetails(selectedLote);
+                    }
+
+                } catch (error) {
+                    console.error('Error procesando Excel:', error);
+                    showNotification('Error al procesar el archivo Excel: ' + error.message, 'error');
+                    document.getElementById('loading').classList.remove('active');
+                }
+            }, 500);
+        }
+
+        function showReservationModal() {
+            if (!selectedLote) return;
+
+            document.getElementById('reservation-lote').value = selectedLote.name;
+            document.getElementById('reservation-name').value = '';
+            document.getElementById('reservation-phone').value = '';
+            document.getElementById('reservation-email').value = '';
+            document.getElementById('reservation-price').value = '';
+            document.getElementById('reservation-amount').value = '';
+            document.getElementById('reservation-notes').value = '';
+
+            document.getElementById('reservation-modal').classList.remove('hidden');
+        }
+
+        function hideReservationModal() {
+            document.getElementById('reservation-modal').classList.add('hidden');
+        }
+
+        function confirmReservation() {
+            const name = document.getElementById('reservation-name').value.trim();
+            const phone = document.getElementById('reservation-phone').value.trim();
+            const email = document.getElementById('reservation-email').value.trim();
+            const price = parseFloat(document.getElementById('reservation-price').value) || 0;
+            const amount = parseFloat(document.getElementById('reservation-amount').value) || 0;
+            const notes = document.getElementById('reservation-notes').value.trim();
+
+            if (!name || !phone) {
+                showNotification('Por favor complete los campos obligatorios', 'error');
+                return;
+            }
+
+            const reservation = {
+                id: Date.now(),
+                lote: selectedLote.name,
+                manzano: selectedLote.manzano,
+                clientName: name,
+                clientPhone: phone,
+                clientEmail: email,
+                price: price,
+                reservationAmount: amount,
+                notes: notes,
+                status: 'reserved',
+                date: new Date().toISOString()
+            };
+
+            reservations.push(reservation);
+            saveReservations();
+
+            // Actualizar estado del lote
+            selectedLote.status = 'reserved';
+            updateLoteStyle(selectedLote);
+
+            updateReservationsList();
+            updateStatistics();
+            hideReservationModal();
+
+            showNotification('Reserva realizada exitosamente', 'success');
+        }
+
+        function loadReservations() {
+            const saved = localStorage.getItem('lotes_reservations');
+            if (saved) {
+                reservations = JSON.parse(saved);
+                updateReservationsList();
+                updateStatistics();
+            }
+        }
+
+        function saveReservations() {
+            localStorage.setItem('lotes_reservations', JSON.stringify(reservations));
+        }
+
+        function updateReservationsList() {
+            const container = document.getElementById('reservations-list');
+            const activeReservations = reservations.filter(r => r.status === 'reserved');
+
+            if (activeReservations.length === 0) {
+                container.innerHTML = '<div class="no-data-message">No hay reservas activas</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            activeReservations.forEach(reservation => {
+                const item = document.createElement('div');
+                item.className = 'reservation-item';
+                item.innerHTML = `
+                    <div class="reservation-header">
+                        <span class="reservation-lote">${reservation.lote}</span>
+                        <span class="reservation-status ${reservation.status}">${reservation.status === 'reserved' ? 'Reservado' : 'Vendido'}</span>
+                    </div>
+                    <div class="reservation-info">
+                        <span><i class="fas fa-user"></i> ${reservation.clientName}</span>
+                        <span><i class="fas fa-phone"></i> ${reservation.clientPhone}</span>
+                        ${reservation.clientEmail ? `<span><i class="fas fa-envelope"></i> ${reservation.clientEmail}</span>` : ''}
+                        ${reservation.price ? `<span><i class="fas fa-dollar-sign"></i> $${reservation.price.toFixed(2)}</span>` : ''}
+                    </div>
+                    <div class="reservation-actions">
+                        <button class="reservation-action confirm" onclick="confirmSale(${reservation.id})">
+                            <i class="fas fa-check"></i> Vender
+                        </button>
+                        <button class="reservation-action cancel" onclick="cancelReservation(${reservation.id})">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function confirmSale(reservationId) {
+            const reservation = reservations.find(r => r.id === reservationId);
+            if (reservation) {
+                reservation.status = 'sold';
+                const lote = lotesData[reservation.lote];
+                if (lote) {
+                    lote.status = 'sold';
+                    updateLoteStyle(lote);
+                }
+                saveReservations();
+                updateReservationsList();
+                updateStatistics();
+                showNotification('Venta confirmada exitosamente', 'success');
+            }
+        }
+
+        function cancelReservation(reservationId) {
+            const reservation = reservations.find(r => r.id === reservationId);
+            if (reservation) {
+                reservation.status = 'cancelled';
+                const lote = lotesData[reservation.lote];
+                if (lote) {
+                    lote.status = 'available';
+                    updateLoteStyle(lote);
+                }
+                saveReservations();
+                updateReservationsList();
+                updateStatistics();
+                showNotification('Reserva cancelada', 'info');
+            }
+        }
+
+        function updateLoteStyle(lote) {
+            if (!lote || !lote.polygon) return;
+
+            let color = '#8B4513';
+            let fillOpacity = 0.3;
+
+            switch (lote.status) {
+                case 'available':
+                    color = '#10b981';
+                    fillOpacity = 0.3;
+                    break;
+                case 'reserved':
+                    color = '#f59e0b';
+                    fillOpacity = 0.5;
+                    break;
+                case 'sold':
+                    color = '#ef4444';
+                    fillOpacity = 0.5;
+                    break;
+            }
+
+            lote.polygon.setStyle({
+                color: color,
+                fillOpacity: fillOpacity,
+                weight: 2
+            });
+        }
+
+        function handleFileSelect(file) {
+            if (!file.name.toLowerCase().endsWith('.dxf')) {
+                showNotification('Por favor selecciona un archivo DXF', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    if (typeof DxfParser === 'undefined') {
+                        showNotification('La librería DXF Parser no está cargada. Por favor recarga la página.', 'error');
+                        return;
+                    }
+
+                    const parser = new DxfParser();
+                    dxfData = parser.parseSync(e.target.result);
+
+                    document.querySelector('.upload-text').textContent = file.name;
+                    document.querySelector('.upload-hint').textContent = 'Archivo cargado exitosamente';
+                    document.getElementById('process-button').disabled = false;
+
+                } catch (err) {
+                    console.error('Error completo:', err);
+                    showNotification('Error al leer el archivo DXF: ' + err.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function processDxfFile() {
+            if (!dxfData) return;
+
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('dxf-modal').classList.add('hidden');
+
+            setTimeout(() => {
+                try {
+                    processDXF(dxfData);
+                    document.getElementById('loading').classList.remove('active');
+                    showNotification('Archivo DXF procesado correctamente', 'success');
+                } catch (error) {
+                    console.error('Error procesando DXF:', error);
+                    showNotification('Error al procesar el archivo DXF', 'error');
+                    document.getElementById('loading').classList.remove('active');
+                }
+            }, 500);
+        }
+
+        function createTextOverlay(textEntity, coordSystem, utmZone, hemisphere, refLat, refLng, scale) {
+            if (!textEntity.text || !textEntity.position) {
+                return null;
+            }
+
+            const text = textEntity.text.replace(/\\P/g, '\n').replace(/%%[d,u]/g, '');
+
+            let geometricCenterDxf;
+            const halign = textEntity.halign || 0;
+            const valign = textEntity.valign || 0;
+
+            if (halign === 1 && (valign === 2 || valign === 1)) {
+                geometricCenterDxf = { x: textEntity.position.x, y: textEntity.position.y };
+            }
+            else if (textEntity.position2) {
+                geometricCenterDxf = {
+                    x: (textEntity.position.x + textEntity.position2.x) / 2,
+                    y: (textEntity.position.y + textEntity.position2.y) / 2
+                };
+            }
+            else {
+                console.warn('Texto sin punto de alineación, usando punto de inserción como centro:', textEntity.text);
+                geometricCenterDxf = { x: textEntity.position.x, y: textEntity.position.y };
+            }
+
+            const position = convertDXFToLatLng(geometricCenterDxf, coordSystem, utmZone, hemisphere, refLat, refLng, scale);
+
+            const canvasFontSize = 64;
+            const color = getColorFromDXF(textEntity.color);
+            const dxfTextHeight = textEntity.height || 2.0;
+            const dxfUnitsToMeters = 1.5;
+            const realWorldHeight = dxfTextHeight * dxfUnitsToMeters;
+            const rotationInRadians = -(textEntity.rotation || 0) * Math.PI / 180;
+
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.font = `bold ${canvasFontSize}px Arial`;
+            tempCtx.textAlign = 'center';
+            tempCtx.textBaseline = 'middle';
+
+            const lines = text.split('\n');
+            let maxWidth = 0;
+            lines.forEach(line => {
+                const metrics = tempCtx.measureText(line);
+                maxWidth = Math.max(maxWidth, metrics.width);
+            });
+            const lineHeight = canvasFontSize * 1.2;
+            const textHeight = lines.length * lineHeight;
+
+            const realWorldWidth = (maxWidth / textHeight) * realWorldHeight;
+            const halfWidth = realWorldWidth / 2;
+            const halfHeight = realWorldHeight / 2;
+
+            const localCorners = [
+                { x: -halfWidth, y: -halfHeight },
+                { x: halfWidth, y: -halfHeight },
+                { x: halfWidth, y: halfHeight },
+                { x: -halfWidth, y: halfHeight }
+            ];
+
+            const cos = Math.cos(rotationInRadians);
+            const sin = Math.sin(rotationInRadians);
+            const rotatedLocalCorners = localCorners.map(corner => ({
+                x: corner.x * cos - corner.y * sin,
+                y: corner.x * sin + corner.y * cos
+            }));
+
+            const metersPerDegreeLat = 111320;
+            const metersPerDegreeLng = metersPerDegreeLat * Math.cos(position[0] * Math.PI / 180);
+
+            const geoCorners = rotatedLocalCorners.map(corner => {
+                const latOffset = corner.y / metersPerDegreeLat;
+                const lngOffset = corner.x / metersPerDegreeLng;
+                return [position[0] + latOffset, position[1] + lngOffset];
+            });
+
+            const bounds = L.latLngBounds(geoCorners);
+
+            const unrotatedWidth = maxWidth;
+            const unrotatedHeight = textHeight;
+            const cornersForCanvas = [
+                { x: -unrotatedWidth / 2, y: -unrotatedHeight / 2 },
+                { x: unrotatedWidth / 2, y: -unrotatedHeight / 2 },
+                { x: unrotatedWidth / 2, y: unrotatedHeight / 2 },
+                { x: -unrotatedWidth / 2, y: unrotatedHeight / 2 }
+            ];
+
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            cornersForCanvas.forEach(corner => {
+                const rotatedX = corner.x * cos - corner.y * sin;
+                const rotatedY = corner.x * sin + corner.y * cos;
+                minX = Math.min(minX, rotatedX);
+                minY = Math.min(minY, rotatedY);
+                maxX = Math.max(maxX, rotatedX);
+                maxY = Math.max(maxY, rotatedY);
+            });
+
+            const finalCanvasWidth = Math.ceil(maxX - minX);
+            const finalCanvasHeight = Math.ceil(maxY - minY);
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = finalCanvasWidth;
+            canvas.height = finalCanvasHeight;
+
+            ctx.font = `bold ${canvasFontSize}px Arial`;
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.save();
+            ctx.translate(finalCanvasWidth / 2, finalCanvasHeight / 2);
+            ctx.rotate(rotationInRadians);
+
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            ctx.shadowBlur = 4;
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = 'white';
+            ctx.strokeText(text, 0, 0);
+            ctx.fillText(text, 0, 0);
+            ctx.restore();
+
+            const imageUrl = canvas.toDataURL('image/png');
+
+            return L.imageOverlay(imageUrl, bounds, {
+                interactive: false,
+                zIndex: 250
+            });
+        }
+
+        function processDXF(dxf) {
+            dxfLayer.clearLayers();
+            lotesLayer.clearLayers();
+            manzanosLayer.clearLayers();
+
+            manzanosData = {};
+            lotesData = {};
+            allBounds = null;
+
+            const coordSystem = document.getElementById('coord-system').value;
+            const utmZone = document.getElementById('utm-zone').value || '20';
+            const hemisphere = document.getElementById('utm-hemisphere').value;
+            let refLat = 0, refLng = 0, scale = 0.00001;
+
+            if (coordSystem === 'utm') {
+                if (!utmZone || isNaN(utmZone)) {
+                    showNotification('Por favor ingresa una zona UTM válida', 'error');
+                    return;
+                }
+            } else {
+                refLat = parseFloat(document.getElementById('ref-lat').value) || 0;
+                refLng = parseFloat(document.getElementById('ref-lng').value) || 0;
+                scale = parseFloat(document.getElementById('scale-input').value) || 0.00001;
+            }
+
+            let bounds = null;
+            if (!dxf.entities) return;
+
+            dxf.entities.forEach(entity => {
+                try {
+                    if (entity.type === 'LWPOLYLINE' || entity.type === 'POLYLINE') {
+                        if (entity.vertices.length === 0) return;
+
+                        let points = [];
+                        const numSegments = entity.closed ? entity.vertices.length : entity.vertices.length - 1;
+
+                        for (let i = 0; i < numSegments; i++) {
+                            const v1 = entity.vertices[i];
+                            const v2 = entity.vertices[(i + 1) % entity.vertices.length];
+                            const bulge = (entity.bulges && entity.bulges[i]) ? entity.bulges[i] : 0;
+
+                            if (i === 0) points.push(convertDXFToLatLng(v1, coordSystem, utmZone, hemisphere, refLat, refLng, scale));
+
+                            if (Math.abs(bulge) > 0.0001) {
+                                const arcPoints = createBulgeArc(v1, v2, bulge, coordSystem, utmZone, hemisphere, refLat, refLng, scale, 96);
+                                points = points.concat(arcPoints);
+                            }
+
+                            points.push(convertDXFToLatLng(v2, coordSystem, utmZone, hemisphere, refLat, refLng, scale));
+                        }
+
+                        if (points.length < 2) return;
+
+                        const color = getColorFromDXF(entity.color);
+                        const lineWeight = getLineWeightInPixels(entity.lineweight);
+
+                        const layerName = (entity.layer || '').toUpperCase();
+                        const isManzano = layerName.startsWith('MZ.') || layerName.startsWith('MZNO') || layerName.includes('MANZANO');
+                        const isLote = layerName.startsWith('LOTE ');
+
+                        if (isManzano || isLote) {
+                            const polygon = L.polygon(points, {
+                                color: isManzano ? '#4285F4' : '#8B4513',
+                                weight: lineWeight,
+                                fillOpacity: isManzano ? 0 : 0.3,
+                                smoothFactor: 0
+                            });
+
+                            let name = '';
+                            if (isManzano) {
+                                name = layerName.replace('MZ.', '').replace('MZNO', '').replace('MANZANO', '').trim();
+
+                                if (!manzanosData[name]) {
+                                    const expandedVerticesManzano = createExpandedVertices(entity.vertices, entity.bulges || []);
+
+                                    manzanosData[name] = {
+                                        name: name,
+                                        polygon: polygon,
+                                        lotes: [],
+                                        area: calculateAreaDXF(expandedVerticesManzano, [])
+                                    };
+                                }
+
+                                polygon.addTo(manzanosLayer);
+                                polygon.options.interactive = false;
+                                polygon.on('click', () => selectManzano(name));
+                            } else if (isLote) {
+                                const loteParts = layerName.replace('LOTE ', '').split(' ');
+                                const manzanoLetra = loteParts[0];
+                                const loteNumero = loteParts[1];
+
+                                name = layerName;
+
+                                const expandedVertices = createExpandedVertices(entity.vertices, entity.bulges || []);
+                                const area = calculateAreaDXF(expandedVertices, []);
+
+                                const existingReservation = reservations.find(r => r.lote === name);
+                                let status = 'available';
+                                if (existingReservation) {
+                                    status = existingReservation.status;
+                                }
+
+                                lotesData[name] = {
+                                    name: name,
+                                    polygon: polygon,
+                                    area: area,
+                                    vertices: entity.vertices,
+                                    expandedVertices: expandedVertices,
+                                    layer: entity.layer,
+                                    manzano: manzanoLetra,
+                                    loteNumero: loteNumero,
+                                    points: points,
+                                    bulges: entity.bulges || [],
+                                    status: status,
+                                    price: 0
+                                };
+
+                                updateLoteStyle(lotesData[name]);
+
+                                polygon.addTo(lotesLayer);
+                                polygon.options.loteName = name;
+                                polygon.bringToFront();
+                                polygon.on('click', () => selectLote(name));
+                            }
+                        } else {
+                            const polyline = L.polyline(points, {
+                                color: color,
+                                weight: lineWeight,
+                                opacity: 0.8
+                            });
+
+                            polyline.addTo(dxfLayer);
+                        }
+
+                        points.forEach(point => {
+                            if (!bounds) bounds = L.latLngBounds([point]);
+                            else bounds.extend(point);
+                        });
+                    } else if (entity.type === 'LINE') {
+                        if (!entity.vertices || entity.vertices.length < 2) return;
+
+                        const p1 = convertDXFToLatLng(entity.vertices[0], coordSystem, utmZone, hemisphere, refLat, refLng, scale);
+                        const p2 = convertDXFToLatLng(entity.vertices[1], coordSystem, utmZone, hemisphere, refLat, refLng, scale);
+
+                        const color = getColorFromDXF(entity.color);
+                        const lineWeight = getLineWeightInPixels(entity.lineweight);
+
+                        const line = L.polyline([p1, p2], {
+                            color: color,
+                            weight: lineWeight,
+                            opacity: 0.8
+                        });
+
+                        line.addTo(dxfLayer);
+
+                        [p1, p2].forEach(point => {
+                            if (!bounds) bounds = L.latLngBounds([point]);
+                            else bounds.extend(point);
+                        });
+                    } else if (entity.type === 'TEXT' || entity.type === 'MTEXT') {
+                        if (!entity.position) return;
+
+                        const text = entity.text || '';
+                        if (text.includes('\\A') || /^\d+:\d+\.\d+m$/.test(text.trim())) {
+                            return;
+                        }
+
+                        const textOverlay = createTextOverlay(entity, coordSystem, utmZone, hemisphere, refLat, refLng, scale);
+
+                        if (textOverlay) {
+                            textOverlay.addTo(dxfLayer);
+
+                            const overlayBounds = textOverlay.getBounds();
+                            if (!bounds) bounds = overlayBounds;
+                            else bounds.extend(overlayBounds);
+                        }
+                    } else if (entity.type === 'CIRCLE') {
+                        if (entity.x === undefined || entity.y === undefined || entity.radius === undefined) return;
+
+                        const center = convertDXFToLatLng({ x: entity.x, y: entity.y }, coordSystem, utmZone, hemisphere, refLat, refLng, scale);
+                        const radiusInMeters = entity.radius * scale * 111000;
+
+                        const color = getColorFromDXF(entity.color);
+                        const lineWeight = getLineWeightInPixels(entity.lineweight);
+
+                        const circle = L.circle(center, {
+                            radius: radiusInMeters,
+                            color: color,
+                            weight: lineWeight,
+                            fillOpacity: 0.1
+                        });
+
+                        circle.addTo(dxfLayer);
+
+                        if (!bounds) bounds = L.latLngBounds([center]);
+                        else bounds.extend(center);
+                    } else if (entity.type === 'ARC') {
+                        if (entity.x === undefined || entity.y === undefined || entity.radius === undefined) return;
+
+                        const center = convertDXFToLatLng({ x: entity.x, y: entity.y }, coordSystem, utmZone, hemisphere, refLat, refLng, scale);
+                        const radiusInMeters = entity.radius * scale * 111000;
+
+                        const color = getColorFromDXF(entity.color);
+                        const lineWeight = getLineWeightInPixels(entity.lineweight);
+
+                        const startAngle = entity.startAngle || 0;
+                        const endAngle = entity.endAngle || Math.PI;
+                        const points = [];
+
+                        for (let angle = startAngle; angle <= endAngle; angle += Math.PI / 36) {
+                            const x = entity.x + entity.radius * Math.cos(angle);
+                            const y = entity.y + entity.radius * Math.sin(angle);
+                            points.push(convertDXFToLatLng({ x, y }, coordSystem, utmZone, hemisphere, refLat, refLng, scale));
+                        }
+
+                        const arc = L.polyline(points, {
+                            color: color,
+                            weight: lineWeight,
+                            fillOpacity: 0
+                        });
+
+                        arc.addTo(dxfLayer);
+
+                        points.forEach(point => {
+                            if (!bounds) bounds = L.latLngBounds([point]);
+                            else bounds.extend(point);
+                        });
+                    }
+                } catch (err) {
+                    console.warn('Error procesando entidad:', err);
+                }
+            });
+
+            assignLotesToManzanos();
+            updateStatistics();
+
+            allBounds = bounds;
+
+            if (bounds && Object.keys(manzanosData).length > 0) {
+                map.fitBounds(bounds, { padding: [10, 10] });
+            } else {
+                showNotification('No se encontraron manzanos o lotes válidos en el DXF', 'error');
+            }
+
+            setTimeout(() => {
+                const sidebarContent = document.getElementById('sidebar-content');
+                const scrollIndicator = document.getElementById('scroll-indicator');
+                if (sidebarContent.scrollHeight > sidebarContent.clientHeight) {
+
+                }
+            }, 100);
+        }
+
+        function assignLotesToManzanos() {
+            Object.keys(lotesData).forEach(loteName => {
+                const lote = lotesData[loteName];
+                const manzanoLetra = lote.manzano;
+
+                if (manzanosData[manzanoLetra]) {
+                    manzanosData[manzanoLetra].lotes.push(loteName);
+                } else {
+                    console.warn(`No se encontró el manzano "${manzanoLetra}" para el lote "${loteName}"`);
+                }
+            });
+        }
+
+        function isPointInPolygon(point, polygon) {
+            let inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i].lat, yi = polygon[i].lng;
+                const xj = polygon[j].lat, yj = polygon[j].lng;
+
+                const intersect = ((yi > point.lng) != (yj > point.lng))
+                    && (point.lat < (xj - xi) * (point.lng - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        function updateManzanosList() {
+            // Ya no necesitamos actualizar la lista de manzanos
+        }
+
+        function updateLotesList() {
+            // Ya no necesitamos actualizar la lista de lotes
+        }
+
+        function updateStatistics() {
+            document.getElementById('total-manzanos').textContent = Object.keys(manzanosData).length;
+            document.getElementById('total-lotes').textContent = Object.keys(lotesData).length;
+
+            let availableCount = 0;
+            let reservedCount = 0;
+            let soldCount = 0;
+            let totalArea = 0;
+
+            Object.values(lotesData).forEach(lote => {
+                totalArea += lote.area;
+                switch (lote.status) {
+                    case 'available':
+                        availableCount++;
+                        break;
+                    case 'reserved':
+                        reservedCount++;
+                        break;
+                    case 'sold':
+                        soldCount++;
+                        break;
+                }
+            });
+
+            document.getElementById('available-lotes').textContent = availableCount;
+            document.getElementById('reserved-lotes').textContent = reservedCount;
+            document.getElementById('sold-lotes').textContent = soldCount;
+            document.getElementById('total-area').textContent = `${totalArea.toFixed(2)} m²`;
+        }
+
+        function filterLotesByManzano(manzanoName) {
+            // Ya no necesitamos filtrar lotes por manzano
+        }
+
+        function selectManzano(manzanoName) {
+            const manzano = manzanosData[manzanoName];
+            if (!manzano) return;
+
+            manzanosLayer.eachLayer(layer => {
+                layer.setStyle({ fillOpacity: 0 });
+            });
+
+            manzano.polygon.setStyle({ fillOpacity: 0.1 });
+
+            lotesLayer.bringToFront();
+
+            map.fitBounds(manzano.polygon.getBounds(), { padding: [10, 10] });
+
+            showNotification(`Manzano seleccionado: ${manzanoName}`, 'info');
+        }
+
+        function selectLote(loteName) {
+            const lote = lotesData[loteName];
+            if (!lote) return;
+
+            lotesLayer.eachLayer(layer => {
+                layer.setStyle({ fillOpacity: 0.3, weight: 2 });
+            });
+
+            lote.polygon.setStyle({ fillOpacity: 0.5, weight: 3 });
+
+            lote.polygon.bringToFront();
+            lotesLayer.bringToFront();
+
+            // Ajustar zoom con más padding para ver el lote más alejado
+            map.fitBounds(lote.polygon.getBounds(), {
+                padding: [20, 20],  // Aumentado de [50, 50] a [150, 150]
+                maxZoom: 20           // Limita el zoom máximo
+            });
+
+            selectedLote = lote;
+            // Mostrar botón de ruta si hay ubicación seleccionada
+            if (userLocation) {
+                document.getElementById('route-button').style.display = 'flex';
+                clearRoute(false); // Limpiar ruta anterior si existe
+            }
+
+            // Mostrar botón de ruta si hay ubicación GPS
+            if (userLocation) {
+                document.getElementById('route-button').style.display = 'flex';
+                clearRoute(false);
+            }
+
+            showLoteDetails(lote);
+        }
+
+        function showLoteDetails(lote) {
+            const lotDataContent = document.getElementById('lot-data-content');
+            const perimeter = calculatePerimeter(lote.polygon.getLatLngs()[0]);
+
+            let statusText = 'Disponible';
+            let statusColor = 'var(--available-color)';
+            let actionButton = '';
+
+            switch (lote.status) {
+                case 'reserved':
+                    statusText = 'Reservado';
+                    statusColor = 'var(--reserved-color)';
+                    break;
+                case 'sold':
+                    statusText = 'Vendido';
+                    statusColor = 'var(--sold-color)';
+                    break;
+                default:
+                    statusText = 'Disponible';
+                    statusColor = 'var(--available-color)';
+            }
+
+            // Botón de WhatsApp siempre visible
+            const whatsappNumber = '59173324084'; // Código de país + número
+            const message = `Hola, estoy interesado en el *${lote.name}*\n\n` +
+                ` Manzano: ${lote.manzano}\n` +
+                ` Área: ${lote.area.toFixed(2)} m²\n` +
+                ` Precio: $${lote.price > 0 ? lote.price.toFixed(2) : 'Consultar'} USD\n` +
+                ` Estado: ${statusText}\n\n` +
+                `¿Podría darme más información?`;
+
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+
+            actionButton = `<button class="control-button success" onclick="window.open('${whatsappUrl}', '_blank')">
+    <i class="fab fa-whatsapp"></i>
+    <span>Consultar por WhatsApp</span>
+</button>`;
+
+            const priceDisplay = lote.price > 0 ? `$${lote.price.toFixed(2)}` : 'No definido';
+            const showPriceTag = lote.price > 0 && lote.status === 'available';
+
+            lotDataContent.innerHTML = `
+                <div class="lot-data-grid">
+                    <div class="lot-data-item">
+                        <span class="lot-data-label">Área:</span>
+                        <span class="lot-data-value">${lote.area.toFixed(2)} m²</span>
+                    </div>
+                    <div class="lot-data-item">
+                        <span class="lot-data-label">Perímetro:</span>
+                        <span class="lot-data-value">${perimeter.toFixed(2)} ml</span>
+                    </div>
+                    <div class="lot-data-item">
+                        <span class="lot-data-label">Nro. Lote:</span>
+                        <span class="lot-data-value">${lote.name.replace('LOTE ', '')}</span>
+                    </div>
+                    <div class="lot-data-item">
+                        <span class="lot-data-label">Manzano:</span>
+                        <span class="lot-data-value">${lote.manzano.replace('MZNO ', '')}</span>
+                    </div>
+                    <div class="lot-data-item">
+                        <span class="lot-data-label">Estado:</span>
+                        <span class="lot-data-value" style="color: ${statusColor};">${statusText}</span>
+                    </div>
+                    <div class="lot-data-item">
+                        <span class="lot-data-label">Precio:</span>
+                        <span class="lot-data-value">${priceDisplay}</span>
+                    </div>
+                </div>
+                ${actionButton}
+                ${showPriceTag ? `<div class="price-tag">$${lote.price.toFixed(2)} USD</div>` : ''}
+            `;
+
+            drawLoteInCanvas(lote);
+        }
+
+        function drawLoteInCanvas(lote) {
+            const canvas = document.getElementById('lot-plan-canvas');
+            const ctx = canvas.getContext('2d');
+
+            // ===== MEJORA 1: Aumentar resolución usando devicePixelRatio =====
+            const dpr = window.devicePixelRatio || 2; // Mínimo 2x para pantallas normales
+            const rect = canvas.getBoundingClientRect();
+
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+
+            ctx.scale(dpr, dpr);
+
+            // ===== MEJORA 2: Activar antialiasing y suavizado =====
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+
+            ctx.clearRect(0, 0, rect.width, rect.height);
+
+            const latlngs = lote.polygon.getLatLngs()[0];
+
+            let minLat = latlngs[0].lat, maxLat = latlngs[0].lat;
+            let minLng = latlngs[0].lng, maxLng = latlngs[0].lng;
+
+            latlngs.forEach(point => {
+                minLat = Math.min(minLat, point.lat);
+                maxLat = Math.max(maxLat, point.lat);
+                minLng = Math.min(minLng, point.lng);
+                maxLng = Math.max(maxLng, point.lng);
+            });
+
+            // ===== MEJORA 3: Aumentar margen para mejor visualización =====
+            const margin = 20; // Aumentado de 15 a 20
+            const width = rect.width - 2 * margin;
+            const height = rect.height - 2 * margin;
+
+            const latRange = maxLat - minLat;
+            const lngRange = maxLng - minLng;
+
+            let scale, offsetX = 0, offsetY = 0;
+            const canvasAspect = width / height;
+            const geoAspect = lngRange / latRange;
+
+            if (geoAspect > canvasAspect) {
+                scale = width / lngRange;
+                offsetY = (height - (latRange * scale)) / 2;
+            } else {
+                scale = height / latRange;
+                offsetX = (width - (lngRange * scale)) / 2;
+            }
+
+            const points = latlngs.map(point => {
+                const x = margin + offsetX + ((point.lng - minLng) * scale);
+                const y = margin + offsetY + ((maxLat - point.lat) * scale);
+                return { x, y };
+            });
+
+            // ===== MEJORA 4: Dibujar polígono con mejor calidad =====
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+
+            ctx.closePath();
+
+            let fillColor = 'rgba(139, 69, 19, 0.2)';
+            let strokeColor = '#8B4513';
+            switch (lote.status) {
+                case 'available':
+                    fillColor = 'rgba(16, 185, 129, 0.25)';
+                    strokeColor = '#10b981';
+                    break;
+                case 'reserved':
+                    fillColor = 'rgba(245, 158, 11, 0.25)';
+                    strokeColor = '#f59e0b';
+                    break;
+                case 'sold':
+                    fillColor = 'rgba(239, 68, 68, 0.25)';
+                    strokeColor = '#ef4444';
+                    break;
+            }
+
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+
+            // ===== MEJORA 5: Borde más definido =====
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 2.5; // Aumentado de 2 a 2.5
+            ctx.lineJoin = 'round'; // Uniones redondeadas
+            ctx.lineCap = 'round'; // Extremos redondeados
+            ctx.stroke();
+
+            // ===== Cálculo de segmentos (sin cambios) =====
+            const individualSegments = [];
+            for (let i = 0; i < latlngs.length; i++) {
+                const nextIndex = (i + 1) % latlngs.length;
+                const distance = latlngs[i].distanceTo(latlngs[nextIndex]);
+                const isCurve = lote.bulges && lote.bulges[i] && Math.abs(lote.bulges[i]) > 0.0001;
+
+                individualSegments.push({
+                    index: i,
+                    distance: distance,
+                    isCurve: isCurve
+                });
+            }
+
+            const SIZE_TOLERANCE = 0.15;
+            const MIN_SEGMENTS_TO_GROUP = 3;
+            const LARGE_THRESHOLD = 5;
+
+            const groupedSegments = [];
+            let i = 0;
+
+            while (i < individualSegments.length) {
+                const currentSeg = individualSegments[i];
+
+                if (currentSeg.distance >= LARGE_THRESHOLD) {
+                    groupedSegments.push({
+                        type: 'individual',
+                        startIndex: i,
+                        endIndex: i,
+                        segments: [currentSeg],
+                        totalDistance: currentSeg.distance,
+                        count: 1
+                    });
+                    i++;
+                    continue;
+                }
+
+                const similarSegments = [currentSeg];
+                let j = i + 1;
+
+                while (j < individualSegments.length) {
+                    const nextSeg = individualSegments[j];
+
+                    if (nextSeg.distance >= LARGE_THRESHOLD) {
+                        break;
+                    }
+
+                    const avgDistance = (currentSeg.distance + nextSeg.distance) / 2;
+                    const difference = Math.abs(currentSeg.distance - nextSeg.distance);
+                    const percentDiff = difference / avgDistance;
+
+                    if (percentDiff <= SIZE_TOLERANCE) {
+                        similarSegments.push(nextSeg);
+                        j++;
+                    } else {
+                        break;
+                    }
+                }
+
+                if (similarSegments.length >= MIN_SEGMENTS_TO_GROUP) {
+                    const totalDist = similarSegments.reduce((sum, seg) => sum + seg.distance, 0);
+                    groupedSegments.push({
+                        type: 'grouped',
+                        startIndex: i,
+                        endIndex: j - 1,
+                        segments: similarSegments,
+                        totalDistance: totalDist,
+                        count: similarSegments.length,
+                        avgSegmentSize: totalDist / similarSegments.length
+                    });
+                    i = j;
+                } else {
+                    groupedSegments.push({
+                        type: 'individual',
+                        startIndex: i,
+                        endIndex: i,
+                        segments: [currentSeg],
+                        totalDistance: currentSeg.distance,
+                        count: 1
+                    });
+                    i++;
+                }
+            }
+
+            // ===== MEJORA 6: Líneas de cota con mejor calidad =====
+            ctx.strokeStyle = '#95a5a6'; // Color más suave
+            ctx.lineWidth = 1.2; // Ligeramente más grueso
+            ctx.font = 'bold 10px Arial'; // Aumentado de 9px a 10px
+            ctx.fillStyle = '#2c3e50';
+
+            for (let i = 0; i < latlngs.length; i++) {
+                const nextIndex = (i + 1) % latlngs.length;
+                const p1 = points[i];
+                const p2 = points[nextIndex];
+
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            }
+
+            // ===== MEJORA 7: Texto de dimensiones más legible =====
+            groupedSegments.forEach(group => {
+                if (group.type === 'individual') {
+                    const i = group.startIndex;
+                    const nextIndex = (i + 1) % latlngs.length;
+                    const p1 = points[i];
+                    const p2 = points[nextIndex];
+
+                    const midX = (p1.x + p2.x) / 2;
+                    const midY = (p1.y + p2.y) / 2;
+
+                    ctx.save();
+                    ctx.translate(midX, midY);
+
+                    const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+                    ctx.rotate(angle);
+
+                    const dimensionText = `${group.totalDistance.toFixed(2)}m`;
+                    const textWidth = ctx.measureText(dimensionText).width;
+
+                    if (Math.abs(angle) > Math.PI / 2) {
+                        ctx.rotate(Math.PI);
+                        ctx.fillText(dimensionText, -textWidth / 2, -3);
+                    } else {
+                        ctx.fillText(dimensionText, -textWidth / 2, -3);
+                    }
+
+                    ctx.restore();
+
+                } else if (group.type === 'grouped') {
+                    const startIdx = group.startIndex;
+                    const endIdx = (group.endIndex + 1) % latlngs.length;
+
+                    const p1 = points[startIdx];
+                    const p2 = points[endIdx];
+
+                    const midX = (p1.x + p2.x) / 2;
+                    const midY = (p1.y + p2.y) / 2;
+
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const length = Math.sqrt(dx * dx + dy * dy);
+
+                    const perpX = -dy / length;
+                    const perpY = dx / length;
+
+                    const offsetDistance = 18; // Aumentado de 15 a 18
+                    const labelX = midX + perpX * offsetDistance;
+                    const labelY = midY + perpY * offsetDistance;
+
+                    ctx.save();
+                    ctx.translate(labelX, labelY);
+
+                    const angle = Math.atan2(dy, dx);
+                    ctx.rotate(angle);
+
+                    const dimensionText = `${group.totalDistance.toFixed(2)}m`;
+                    const textWidth = ctx.measureText(dimensionText).width;
+
+                    // ===== Fondo blanco para el texto CURVAS =====
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.0)';
+                    ctx.fillRect(-textWidth / 2 - 3, -10, textWidth + 6, 14);
+
+                    ctx.fillStyle = '#2c3e50';
+                    if (Math.abs(angle) > Math.PI / 2) {
+                        ctx.rotate(Math.PI);
+                        ctx.fillText(dimensionText, -textWidth / 2, 3);
+                    } else {
+                        ctx.fillText(dimensionText, -textWidth / 2, 3);
+                    }
+
+                    ctx.restore();
+                }
+            });
+
+            // ===== MEJORA 8: Número de lote más grande y visible =====
+            let area = 0;
+            let centroidX = 0;
+            let centroidY = 0;
+
+            for (let i = 0; i < points.length; i++) {
+                const j = (i + 1) % points.length;
+                const crossProduct = points[i].x * points[j].y - points[j].x * points[i].y;
+                area += crossProduct;
+                centroidX += (points[i].x + points[j].x) * crossProduct;
+                centroidY += (points[i].y + points[j].y) * crossProduct;
+            }
+
+            area *= 0.5;
+            centroidX /= (6 * area);
+            centroidY /= (6 * area);
+
+            if (centroidX < margin || centroidX > rect.width - margin ||
+                centroidY < margin || centroidY > rect.height - margin) {
+                centroidX = 0;
+                centroidY = 0;
+                points.forEach(point => {
+                    centroidX += point.x;
+                    centroidY += point.y;
+                });
+                centroidX /= points.length;
+                centroidY /= points.length;
+            }
+
+            const loteNumber = lote.loteNumero || lote.name.replace(/\D+/g, '');
+
+            const circleRadius = 18; // Aumentado de 18 a 22
+
+            // ===== Sombra para el círculo =====
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+
+            ctx.fillStyle = '#4285F4';
+            ctx.beginPath();
+            ctx.arc(centroidX, centroidY, circleRadius, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Resetear sombra
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3; // Aumentado de 2 a 3
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px Arial'; // Aumentado de 14px a 16px
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(loteNumber, centroidX, centroidY);
+            ctx.textAlign = 'start';
+            ctx.textBaseline = 'alphabetic';
+        }
+
+        function calculateArea(latlngs) {
+            let area = 0;
+            const R = 6371000;
+
+            for (let i = 0; i < latlngs.length; i++) {
+                const p1 = latlngs[i];
+                const p2 = latlngs[(i + 1) % latlngs.length];
+
+                const lat1 = p1.lat * Math.PI / 180;
+                const lat2 = p2.lat * Math.PI / 180;
+                const lng1 = p1.lng * Math.PI / 180;
+                const lng2 = p2.lng * Math.PI / 180;
+
+                area += (lng2 - lng1) * (2 + Math.sin(lat1) + Math.sin(lat2));
+            }
+
+            return Math.abs(area * R * R / 2);
+        }
+
+        function calculatePerimeter(latlngs) {
+            let perimeter = 0;
+
+            for (let i = 0; i < latlngs.length; i++) {
+                const p1 = latlngs[i];
+                const p2 = latlngs[(i + 1) % latlngs.length];
+
+                perimeter += p1.distanceTo(p2);
+            }
+
+            return perimeter;
+        }
+
+        function createExpandedVertices(vertices, bulges) {
+            if (!vertices || vertices.length === 0) return [];
+
+            const expandedVertices = [];
+            const segments = 32;
+
+            for (let i = 0; i < vertices.length; i++) {
+                const v1 = vertices[i];
+                const v2 = vertices[(i + 1) % vertices.length];
+                const bulge = bulges[i] || 0;
+
+                expandedVertices.push(v1);
+
+                if (Math.abs(bulge) > 0.0001) {
+                    const includedAngle = 4 * Math.atan(bulge);
+                    const dx = v2.x - v1.x;
+                    const dy = v2.y - v1.y;
+                    const chordLength = Math.sqrt(dx * dx + dy * dy);
+
+                    if (chordLength > 0.0001) {
+                        const radius = chordLength / (2 * Math.sin(includedAngle / 2));
+                        const chordAngle = Math.atan2(dy, dx);
+                        const centerAngle = (Math.PI / 2 - includedAngle / 2) + chordAngle;
+                        const centerX = v1.x + radius * Math.cos(centerAngle);
+                        const centerY = v1.y + radius * Math.sin(centerAngle);
+
+                        let startAngle = Math.atan2(v1.y - centerY, v1.x - centerX);
+                        let endAngle = Math.atan2(v2.y - centerY, v2.x - centerX);
+
+                        if (bulge > 0) {
+                            if (endAngle <= startAngle) endAngle += 2 * Math.PI;
+                        } else {
+                            if (startAngle <= endAngle) startAngle += 2 * Math.PI;
+                            [startAngle, endAngle] = [endAngle, startAngle];
+                        }
+
+                        const angleStep = (endAngle - startAngle) / segments;
+
+                        for (let j = 1; j < segments; j++) {
+                            const angle = startAngle + angleStep * j;
+                            const x = centerX + Math.abs(radius) * Math.cos(angle);
+                            const y = centerY + Math.abs(radius) * Math.sin(angle);
+                            expandedVertices.push({ x: x, y: y });
+                        }
+                    }
+                }
+            }
+
+            return expandedVertices;
+        }
+
+        function calculateAreaDXF(vertices, bulges) {
+            if (!vertices || vertices.length < 3) return 0;
+
+            let area = 0;
+
+            for (let i = 0; i < vertices.length; i++) {
+                const v1 = vertices[i];
+                const v2 = vertices[(i + 1) % vertices.length];
+
+                area += (v1.x * v2.y - v2.x * v1.y);
+            }
+
+            return Math.abs(area / 2);
+        }
+
+        function clearView() {
+            dxfLayer.clearLayers();
+            lotesLayer.clearLayers();
+            manzanosLayer.clearLayers();
+
+            manzanosData = {};
+            lotesData = {};
+            selectedLote = null;
+            allBounds = null;
+
+            document.getElementById('lot-data-content').innerHTML = `
+                <div class="empty-lote-data">
+                    <i class="fas fa-mouse-pointer"></i>
+                    Selecciona un lote para ver sus datos
+                </div>
+            `;
+
+            const canvas = document.getElementById('lot-plan-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            updateManzanosList();
+            updateLotesList();
+            updateStatistics();
+
+            showNotification('Vista limpiada correctamente', 'info');
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const messageElement = notification.querySelector('.notification-message');
+            const iconElement = notification.querySelector('.notification-icon i');
+
+            messageElement.textContent = message;
+
+            notification.className = 'notification ' + type;
+
+            if (type === 'success') {
+                iconElement.className = 'fas fa-check-circle';
+            } else if (type === 'error') {
+                iconElement.className = 'fas fa-exclamation-circle';
+            } else {
+                iconElement.className = 'fas fa-info-circle';
+            }
+
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                hideNotification();
+            }, 5000);
+        }
+
+        function hideNotification() {
+            const notification = document.getElementById('notification');
+            notification.classList.remove('show');
+        }
+
+        function convertDXFToLatLng(vertex, coordSystem, utmZone, hemisphere, refLat, refLng, scale) {
+            const x = vertex.x || 0, y = vertex.y || 0;
+
+            if (coordSystem === 'utm') {
+                try {
+                    const utmProj = hemisphere === 'south'
+                        ? `+proj=utm +zone=${utmZone} +south +datum=WGS84 +units=m +no_defs`
+                        : `+proj=utm +zone=${utmZone} +datum=WGS84 +units=m +no_defs`;
+                    const wgs84 = '+proj=longlat +datum=WGS84 +no_defs';
+                    const result = proj4(utmProj, wgs84, [x, y]);
+                    return [result[1], result[0]];
+                } catch (error) {
+                    console.error('Error en conversión UTM:', error);
+                    if (Math.abs(x) > 1000 || Math.abs(y) > 1000) {
+                        const adjustedX = x - 500000;
+                        const lat = y / 111320;
+                        const lng = (adjustedX / (111320 * Math.cos(lat * Math.PI / 180)));
+                        return [lat, lng - 66];
+                    } else {
+                        return [refLat + (y * scale), refLng + (x * scale)];
+                    }
+                }
+            } else {
+                if (Math.abs(x) <= 180 && Math.abs(y) <= 90) {
+                    return [y, x];
+                } else if (Math.abs(x) > 1 && Math.abs(y) > 1) {
+                    const lat = y / 111320;
+                    const lng = x / (111320 * Math.cos(lat * Math.PI / 180));
+                    return [lat, lng];
+                } else {
+                    return [refLat + (y * scale), refLng + (x * scale)];
+                }
+            }
+        }
+
+        function getColorFromDXF(colorIndex) {
+            const colors = {
+                1: '#FF0000', 2: '#FFFF00', 3: '#00FF00', 4: '#00FFFF', 5: '#0000FF',
+                6: '#FF00FF', 7: '#000000', 8: '#808080', 9: '#C0C0C0', 10: '#FF0000',
+                30: '#FF7F00', 40: '#FF7F7F', 50: '#7F0000', 60: '#7F3F00', 70: '#7F7F00',
+                80: '#00FF00', 90: '#007F00', 100: '#007F7F', 110: '#00FF7F', 120: '#00FFFF',
+                130: '#007FFF', 140: '#0000FF', 150: '#7F00FF', 160: '#FF00FF', 170: '#FF007F',
+                180: '#7F007F', 250: '#3F3F3F', 255: '#FFFFFF'
+            };
+            return colors[colorIndex] || '#000000';
+        }
+
+        function getLineWeightInPixels(lineweight) {
+            if (!lineweight || lineweight === -1 || lineweight === -2) return 2;
+            const mmValue = Math.abs(lineweight) / 100;
+            return Math.max(1, Math.min(mmValue * 3, 10));
+        }
+
+        function createBulgeArc(v1, v2, bulge, coordSystem, utmZone, hemisphere, refLat, refLng, scale, segments = 64) {
+            const points = [];
+            if (Math.abs(bulge) < 0.00001) return points;
+
+            const includedAngle = 4 * Math.atan(bulge);
+            const dx = v2.x - v1.x;
+            const dy = v2.y - v1.y;
+            const chordLength = Math.sqrt(dx * dx + dy * dy);
+
+            if (chordLength < 0.0001) return points;
+
+            const radius = chordLength / (2 * Math.sin(includedAngle / 2));
+            const chordAngle = Math.atan2(dy, dx);
+            const centerAngle = (Math.PI / 2 - includedAngle / 2) + chordAngle;
+            const centerX = v1.x + radius * Math.cos(centerAngle);
+            const centerY = v1.y + radius * Math.sin(centerAngle);
+
+            let startAngle = Math.atan2(v1.y - centerY, v1.x - centerX);
+            let endAngle = Math.atan2(v2.y - centerY, v2.x - centerX);
+
+            if (bulge > 0) {
+                if (endAngle <= startAngle) endAngle += 2 * Math.PI;
+            } else {
+                if (startAngle <= endAngle) startAngle += 2 * Math.PI;
+                [startAngle, endAngle] = [endAngle, startAngle];
+            }
+
+            const angleStep = (endAngle - startAngle) / segments;
+
+            for (let i = 1; i < segments; i++) {
+                const angle = startAngle + angleStep * i;
+                const x = centerX + Math.abs(radius) * Math.cos(angle);
+                const y = centerY + Math.abs(radius) * Math.sin(angle);
+                points.push(convertDXFToLatLng({ x, y }, coordSystem, utmZone, hemisphere, refLat, refLng, scale));
+            }
+
+            return points;
+        }
+
+
+
+
+
+
+        // ============= FUNCIONES DE GEOLOCALIZACIÓN Y RUTA =============
+
+        function getUserLocationGPS() {
+            const button = document.getElementById('locate-me-button');
+
+            if (!navigator.geolocation) {
+                showNotification('Tu dispositivo no soporta geolocalización', 'error');
+                return;
+            }
+
+            // Activar animación de carga
+            button.classList.add('active');
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            showNotification('Obteniendo tu ubicación GPS...', 'info');
+
+            navigator.geolocation.getCurrentPosition(
+                function (position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    // Guardar ubicación
+                    userLocation = L.latLng(lat, lng);
+
+                    // Remover marcador anterior si existe
+                    if (userMarker) {
+                        map.removeLayer(userMarker);
+                    }
+
+                    // Crear icono personalizado para el usuario
+                    const userIcon = L.divIcon({
+                        className: 'user-location-marker',
+                        html: `
+                    <div style="position: relative;">
+                        <div style="width: 20px; height: 20px; background: #4285F4; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; background: rgba(66, 133, 244, 0.2); border-radius: 50%; animation: pulse 2s infinite;"></div>
+                    </div>
+                `,
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
+                    });
+
+                    // Crear nuevo marcador
+                    userMarker = L.marker(userLocation, {
+                        icon: userIcon,
+                        zIndexOffset: 1000
+                    }).addTo(map);
+
+                    userMarker.bindPopup(`
+                <div style="text-align: center;">
+                    <strong>📍 Tu ubicación</strong><br>
+                    <small>Lat: ${lat.toFixed(6)}</small><br>
+                    <small>Lng: ${lng.toFixed(6)}</small>
+                </div>
+            `).openPopup();
+
+                    // Crear círculo de precisión
+                    const accuracyCircle = L.circle(userLocation, {
+                        radius: position.coords.accuracy,
+                        color: '#4285F4',
+                        fillColor: '#4285F4',
+                        fillOpacity: 0.1,
+                        weight: 1
+                    }).addTo(map);
+
+                    // Guardar referencia para eliminar después
+                    if (!window.userAccuracyCircle) {
+                        window.userAccuracyCircle = accuracyCircle;
+                    }
+
+                    // Centrar mapa en la ubicación
+                    map.setView(userLocation, 16);
+
+                    // Restaurar botón
+                    button.classList.remove('active');
+                    button.innerHTML = '<i class="fas fa-crosshairs"></i>';
+
+                    // Mostrar botón de ruta si hay un lote seleccionado
+                    if (selectedLote) {
+                        document.getElementById('route-button').style.display = 'flex';
+                    }
+
+                    showNotification('📍 Ubicación obtenida. Selecciona un lote para trazar la ruta.', 'success');
+                },
+                function (error) {
+                    // Restaurar botón
+                    button.classList.remove('active');
+                    button.innerHTML = '<i class="fas fa-crosshairs"></i>';
+
+                    let errorMsg = '❌ No se pudo obtener tu ubicación. ';
+                    switch (error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg += 'Debes permitir el acceso a la ubicación en tu navegador.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg += 'La información de ubicación no está disponible.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg += 'Tiempo de espera agotado. Intenta de nuevo.';
+                            break;
+                        default:
+                            errorMsg += 'Error desconocido.';
+                    }
+                    showNotification(errorMsg, 'error');
+                    console.error('Error de geolocalización:', error);
+                },
+                {
+                    enableHighAccuracy: true,  // Usar GPS de alta precisión
+                    timeout: 10000,            // Esperar máximo 10 segundos
+                    maximumAge: 0              // No usar ubicación en caché
+                }
+            );
+        }
+
+        async function drawRouteToLote() {
+            if (!userLocation || !selectedLote) {
+                if (!userLocation) {
+                    showNotification('❌ Primero activa tu ubicación GPS con el botón 🎯', 'error');
+                } else {
+                    showNotification('❌ Primero selecciona un lote en el mapa', 'error');
+                }
+                return;
+            }
+
+            // Limpiar ruta anterior
+            clearRoute(false);
+
+            // Verificar que el panel exista
+            let routePanel = document.getElementById('route-info-panel');
+            if (!routePanel) {
+                console.warn('Panel de ruta no encontrado, creándolo...');
+                routePanel = document.createElement('div');
+                routePanel.id = 'route-info-panel';
+                routePanel.className = 'route-info-panel';
+                routePanel.innerHTML = `
+            <button class="route-info-close touchable" id="route-info-close">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="route-info-title">
+                <i class="fas fa-route"></i>
+                RUTA CALCULADA
+            </div>
+            <div id="route-info-content"></div>
+        `;
+                document.querySelector('main').appendChild(routePanel);
+
+                document.getElementById('route-info-close').addEventListener('click', function () {
+                    document.getElementById('route-info-panel').classList.remove('active');
+                });
+            }
+
+            // Mostrar panel de carga
+            routePanel.classList.add('active');
+
+            const routeContent = document.getElementById('route-info-content');
+            if (routeContent) {
+                routeContent.innerHTML = `
+            <div class="route-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Calculando mejor ruta...</p>
+            </div>
+        `;
+            }
+
+            // Obtener el centro del lote
+            const loteBounds = selectedLote.polygon.getBounds();
+            const loteCenter = loteBounds.getCenter();
+
+            // Extraer coordenadas correctamente
+            let userLat, userLng, loteLat, loteLng;
+
+            if (userLocation.lat !== undefined && userLocation.lng !== undefined) {
+                userLat = userLocation.lat;
+                userLng = userLocation.lng;
+            } else if (userLocation[0] !== undefined && userLocation[1] !== undefined) {
+                userLat = userLocation[0];
+                userLng = userLocation[1];
+            } else {
+                showNotification('❌ Error: coordenadas de usuario inválidas', 'error');
+                return;
+            }
+
+            if (loteCenter.lat !== undefined && loteCenter.lng !== undefined) {
+                loteLat = loteCenter.lat;
+                loteLng = loteCenter.lng;
+            } else if (loteCenter[0] !== undefined && loteCenter[1] !== undefined) {
+                loteLat = loteCenter[0];
+                loteLng = loteCenter[1];
+            } else {
+                showNotification('❌ Error: coordenadas de lote inválidas', 'error');
+                return;
+            }
+
+            // Validar que las coordenadas estén en rangos válidos
+            if (Math.abs(userLat) > 90 || Math.abs(userLng) > 180) {
+                showNotification('❌ Error: coordenadas de usuario fuera de rango', 'error');
+                console.error('Coordenadas usuario:', userLat, userLng);
+                return;
+            }
+
+            if (Math.abs(loteLat) > 90 || Math.abs(loteLng) > 180) {
+                showNotification('❌ Error: coordenadas de lote fuera de rango', 'error');
+                console.error('Coordenadas lote:', loteLat, loteLng);
+                return;
+            }
+
+            console.log('🎯 Usuario:', userLat, userLng);
+            console.log('🏠 Lote:', loteLat, loteLng);
+
+            try {
+                // Construir URL con coordenadas en formato lng,lat (importante para OSRM)
+                const url = `https://router.project-osrm.org/route/v1/driving/${userLng},${userLat};${loteLng},${loteLat}?overview=full&geometries=geojson&steps=true`;
+
+                console.log('🌐 URL:', url);
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
+                    throw new Error(`Error ${response.status}: ${errorText}`);
+                }
+
+                const data = await response.json();
+
+                if (!data.routes || data.routes.length === 0) {
+                    throw new Error('No se encontró una ruta');
+                }
+
+                const route = data.routes[0];
+                const coordinates = route.geometry.coordinates;
+
+                // Convertir coordenadas [lng, lat] a [lat, lng] para Leaflet
+                const routePoints = coordinates.map(coord => [coord[1], coord[0]]);
+
+                console.log('✅ Ruta encontrada:', routePoints.length, 'puntos');
+
+                // Crear capa de ruta
+                routeLayer = L.featureGroup().addTo(map);
+
+                // Dibujar borde blanco (outline)
+                L.polyline(routePoints, {
+                    color: '#ffffff',
+                    weight: 8,
+                    opacity: 0.8,
+                    lineJoin: 'round',
+                    lineCap: 'round'
+                }).addTo(routeLayer);
+
+                // Dibujar línea de ruta principal
+                const routeLine = L.polyline(routePoints, {
+                    color: '#4285F4',
+                    weight: 5,
+                    opacity: 0.9,
+                    lineJoin: 'round',
+                    lineCap: 'round'
+                }).addTo(routeLayer);
+
+                // Agregar flechas direccionales
+                const arrowInterval = Math.max(1, Math.floor(routePoints.length / 8));
+                for (let i = arrowInterval; i < routePoints.length - 1; i += arrowInterval) {
+                    const point = routePoints[i];
+                    const nextPoint = routePoints[i + 1];
+
+                    const angle = Math.atan2(
+                        nextPoint[0] - point[0],
+                        nextPoint[1] - point[1]
+                    ) * 180 / Math.PI;
+
+                    const arrowIcon = L.divIcon({
+                        className: 'route-arrow-marker',
+                        html: `<div style="transform: rotate(${angle}deg);"><i class="fas fa-caret-up" style="font-size: 24px; color: #4285F4; text-shadow: 0 0 3px white, 0 0 5px white;"></i></div>`,
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    });
+
+                    L.marker(point, {
+                        icon: arrowIcon,
+                        interactive: false
+                    }).addTo(routeLayer);
+                }
+
+                // Calcular distancia y tiempo
+                const distance = route.distance; // en metros
+                const duration = route.duration; // en segundos
+
+                const distanceText = distance > 1000
+                    ? `${(distance / 1000).toFixed(2)} km`
+                    : `${distance.toFixed(0)} m`;
+
+                const hours = Math.floor(duration / 3600);
+                const minutes = Math.floor((duration % 3600) / 60);
+                let timeText = '';
+                if (hours > 0) {
+                    timeText = `${hours}h ${minutes}min`;
+                } else if (minutes > 0) {
+                    timeText = `${minutes} min`;
+                } else {
+                    timeText = '< 1 min';
+                }
+
+                // Agregar marcador de destino
+                const endIcon = L.divIcon({
+                    className: 'destination-marker',
+                    html: `
+                <div style="position: relative;">
+                    <i class="fas fa-map-marker-alt" style="font-size: 40px; color: #ef4444; text-shadow: 0 2px 8px rgba(0,0,0,0.4);"></i>
+                    <div style="position: absolute; top: 8px; left: 50%; transform: translateX(-50%); background: white; color: #ef4444; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid #ef4444;">B</div>
+                </div>
+            `,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 40]
+                });
+
+                L.marker([loteLat, loteLng], {
+                    icon: endIcon,
+                    zIndexOffset: 900
+                }).addTo(routeLayer)
+                    .bindPopup(`<strong>🎯 Destino</strong><br>${selectedLote.name}`);
+
+                // Obtener instrucciones paso a paso
+                const steps = route.legs[0].steps;
+                let stepsHTML = '';
+
+                if (steps && steps.length > 0) {
+                    stepsHTML = '<div class="route-steps">';
+                    let stepNumber = 1;
+
+                    steps.forEach((step) => {
+                        const maneuver = step.maneuver;
+                        const instruction = maneuver.instruction || 'Continuar recto';
+                        const stepDistance = step.distance > 1000
+                            ? `${(step.distance / 1000).toFixed(1)} km`
+                            : `${step.distance.toFixed(0)} m`;
+
+                        let icon = 'fa-arrow-up';
+                        const type = maneuver.type;
+                        const modifier = maneuver.modifier || '';
+
+                        if (type === 'turn') {
+                            if (modifier.includes('left')) icon = 'fa-arrow-left';
+                            else if (modifier.includes('right')) icon = 'fa-arrow-right';
+                        } else if (type === 'roundabout' || type === 'rotary') {
+                            icon = 'fa-circle-notch';
+                        } else if (type === 'arrive') {
+                            icon = 'fa-flag-checkered';
+                        } else if (type === 'depart') {
+                            icon = 'fa-play';
+                        }
+
+                        if (type !== 'arrive' || stepNumber === steps.length) {
+                            stepsHTML += `
+                        <div class="route-step">
+                            <i class="fas ${icon} route-step-icon"></i>
+                            <div class="route-step-text">
+                                <strong>${stepNumber}.</strong> ${instruction}
+                                ${step.name ? `<br><small style="color: var(--sai-text-light);">${step.name}</small>` : ''}
+                                <br><em style="color: var(--sai-orange);">(${stepDistance})</em>
+                            </div>
+                        </div>
+                    `;
+                            stepNumber++;
+                        }
+                    });
+                    stepsHTML += '</div>';
+                }
+
+// Actualizar panel de información - SOLO DISTANCIA Y TIEMPO
+if (routeContent) {
+    routeContent.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--sai-gray);">
+            <i class="fas fa-ruler" style="color: var(--sai-purple); font-size: 14px;"></i>
+            <span style="font-size: 12px; font-weight: 700;">${distanceText}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+            <i class="fas fa-clock" style="color: var(--sai-orange); font-size: 14px;"></i>
+            <span style="font-size: 12px; font-weight: 700;">${timeText}</span>
+        </div>
+    `;
+}
+
+                currentRoute = {
+                    profile: 'driving',
+                    points: routePoints,
+                    distance: distance,
+                    duration: duration
+                };
+
+                routeDisplayed = true;
+
+                // Ajustar vista
+                map.fitBounds(routeLine.getBounds(), {
+                    padding: [80, 80],
+                    maxZoom: 16
+                });
+
+                // Mostrar botones
+                const clearBtn = document.getElementById('clear-route-button');
+                const routeBtn = document.getElementById('route-button');
+                if (clearBtn) clearBtn.style.display = 'flex';
+                if (routeBtn) routeBtn.style.display = 'none';
+
+                showNotification('✅ Ruta calculada correctamente', 'success');
+
+            } catch (error) {
+                console.error('❌ Error completo al calcular la ruta:', error);
+
+                // Fallback: línea directa
+                routeLayer = L.featureGroup().addTo(map);
+
+                const userLatLng = L.latLng(userLat, userLng);
+                const loteLatLng = L.latLng(loteLat, loteLng);
+
+                const directLine = L.polyline([userLatLng, loteLatLng], {
+                    color: '#f59e0b',
+                    weight: 4,
+                    opacity: 0.8,
+                    dashArray: '10, 10'
+                }).addTo(routeLayer);
+
+                const distance = userLatLng.distanceTo(loteLatLng);
+                const distanceText = distance > 1000
+                    ? `${(distance / 1000).toFixed(2)} km`
+                    : `${distance.toFixed(0)} m`;
+
+                const endIcon = L.divIcon({
+                    className: 'destination-marker',
+                    html: `<i class="fas fa-map-marker-alt" style="font-size: 40px; color: #ef4444; text-shadow: 0 2px 8px rgba(0,0,0,0.4);"></i>`,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 40]
+                });
+
+                L.marker(loteLatLng, { icon: endIcon }).addTo(routeLayer)
+                    .bindPopup(`<strong>🎯 Destino</strong><br>${selectedLote.name}`);
+
+                if (routeContent) {
+                    routeContent.innerHTML = `
+                <div style="color: var(--sai-orange); margin-bottom: 10px; font-size: 11px; text-align: center;">
+                    <i class="fas fa-exclamation-triangle"></i><br>
+                    Mostrando distancia en línea recta
+                </div>
+                <div class="route-info-item">
+                    <i class="fas fa-ruler"></i>
+                    <span>Distancia: <strong>${distanceText}</strong></span>
+                </div>
+                <div class="route-info-item">
+                    <i class="fas fa-info-circle"></i>
+                    <span style="font-size: 10px;">No hay carreteras disponibles en la zona o verifica tu conexión.</span>
+                </div>
+            `;
+                }
+
+                map.fitBounds(directLine.getBounds(), { padding: [60, 60] });
+
+                const clearBtn = document.getElementById('clear-route-button');
+                const routeBtn = document.getElementById('route-button');
+                if (clearBtn) clearBtn.style.display = 'flex';
+                if (routeBtn) routeBtn.style.display = 'none';
+
+                showNotification('⚠️ Mostrando distancia directa. ' + error.message, 'error');
+            }
+        }
+
+
+
+        function clearRoute(showNotif = true) {
+            // Eliminar la capa de ruta
+            if (routeLayer) {
+                map.removeLayer(routeLayer);
+                routeLayer = null;
+            }
+
+            // NO eliminar el marcador del usuario ni el círculo de precisión
+            // Solo resetear la ruta
+            routeDisplayed = false;
+            currentRoute = null;
+
+            // Ocultar paneles
+            document.getElementById('route-info-panel').classList.remove('active');
+            document.getElementById('clear-route-button').style.display = 'none';
+
+            if (userLocation && selectedLote) {
+                document.getElementById('route-button').style.display = 'flex';
+            }
+
+            if (showNotif) {
+                showNotification('🗑️ Ruta eliminada', 'info');
+            }
+        }
+
+        function clearLocationAndRoute() {
+            // Eliminar la capa de ruta
+            if (routeLayer) {
+                map.removeLayer(routeLayer);
+                routeLayer = null;
+            }
+
+            // Eliminar el marcador de ubicación del usuario
+            if (userMarker) {
+                map.removeLayer(userMarker);
+                userMarker = null;
+            }
+
+            // Eliminar el círculo de precisión
+            if (window.userAccuracyCircle) {
+                map.removeLayer(window.userAccuracyCircle);
+                window.userAccuracyCircle = null;
+            }
+
+            // Resetear variables de ubicación
+            userLocation = null;
+            routeDisplayed = false;
+            currentRoute = null;
+
+            // Ocultar paneles y botones
+            document.getElementById('route-info-panel').classList.remove('active');
+            document.getElementById('clear-route-button').style.display = 'none';
+            document.getElementById('route-button').style.display = 'none';
+
+            showNotification('🗑️ Ubicación y ruta eliminadas', 'info');
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    </script>
+</body>
+
+</html>
