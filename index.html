@@ -1243,12 +1243,12 @@
         }
     </style>
 
-        <script type="text/javascript">
+    <script type="text/javascript">
         // Espera a que el DOM esté completamente cargado
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function () {
             // Define el ancho máximo para considerar un dispositivo como móvil
             // 768px es un punto de ruptura (breakpoint) común para tabletas/móviles
-            var anchoMaximoMovil = 768; 
+            var anchoMaximoMovil = 768;
 
             if (window.innerWidth <= anchoMaximoMovil) {
                 // Si el ancho de la ventana es menor o igual al máximo móvil,
@@ -1265,7 +1265,7 @@
             <div class="logo">
                 <img src="img/LOGO2.png" alt="Logo de la empresa">
                 <div class="logo-text">
-                    <span class="logo-main">Gestor de Lotes</span>
+                    <span class="logo-main">Gestiona Tu Inmobiliario</span>
                     <span class="logo-sub">SAI SOLUCIONES A LA INGENIERÍA</span>
                 </div>
             </div>
@@ -1916,7 +1916,7 @@
                     // DESPUÉS DE CARGAR EL DXF, CARGAR EL EXCEL Y EL MODELO 3D AUTOMÁTICAMENTE
                     setTimeout(() => {
                         loadDefaultExcel();
-                        loadDefaultGLB();  // <-- AGREGAR ESTA LÍNEA
+                        loadDefaultGLB();
                     }, 1000);
                 })
                 .catch(error => {
@@ -2015,277 +2015,248 @@
                 });
         }
 
-function loadDefaultGLB() {
-    console.log("Iniciando carga automática de múltiples modelos GLB...");
 
-    const loadingEl = document.getElementById('loading');
-    const loadingText = document.querySelector('.loading-text');
+        function loadDefaultGLB() {
+            console.log("Iniciando carga automática de múltiples modelos GLB...");
 
-    if (loadingEl) loadingEl.classList.add('active');
-    if (loadingText) loadingText.textContent = 'Cargando modelos 3D...';
+            const loadingEl = document.getElementById('loading');
+            const loadingText = document.querySelector('.loading-text');
 
-    // Array con las rutas de los modelos a cargar
-    const glbPaths = [
-        'img/MODELO1.GLB',
-        'img/MODELO2.GLB',
-        'img/MODELO3.GLB',
-        'img/MODELO4.GLB',
-        'img/MODELO5.GLB',
-        'img/MODELO6.GLB',
-        'img/MODELO7.GLB',
-        'img/MODELO8.GLB',
-        'img/MODELO9.GLB',
-        'img/MODELO10.GLB',
-        'img/MODELO11.GLB',
-        'img/MODELO12.GLB',
-        'img/MODELO13.GLB',
-        'img/MODELO14.GLB',
-        'img/MODELO15.GLB',
-        'img/MODELO16.GLB',
-        'img/MODELO17.GLB',
-        'img/MODELO18.GLB',
-        'img/MODELO19.GLB',
-        'img/MODELO20.GLB',
-        'img/MODELO21.GLB',
-        'img/MODELO22.GLB',
-        'img/MODELO23.GLB',
-        'img/MODELO24.GLB',
-        'img/MODELO25.GLB',
-        'img/MODELO26.GLB',
-        'img/MODELO27.GLB',
-        'img/MODELO28.GLB',
-        'img/MODELO29.GLB',
-        'img/MODELO30.GLB',
-        'img/MODELO31.GLB',
-        'img/MODELO32.GLB',
-        'img/MODELO33.GLB',
-        'img/MODELO34.GLB',
-        'img/MODELO35.GLB',
-        'img/MODELO36.GLB',
-        'img/MODELO37.GLB',
-        'img/MODELO38.GLB'
-    ];
+            if (loadingEl) loadingEl.classList.add('active');
 
-    // Array para almacenar los modelos cargados
-    const loadedModels = [];
-    let modelsLoaded = 0;
-    let errors = [];
-    let globalOriginUTM = null; // Origen común para todos los modelos
+            // Array con las rutas de los 38 modelos a cargar
+            const glbPaths = [];
+            for (let i = 1; i <= 16; i++) {
+                glbPaths.push(`img/MODELO${i}.GLB`);
+            }
 
-    // Función para cargar un modelo individual
-    function loadSingleModel(glbPath, index) {
-        return fetch(glbPath)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Error HTTP en ${glbPath}: ${response.status} ${response.statusText}`);
-                }
-                return response.arrayBuffer();
-            })
-            .then(arrayBuffer => {
-                console.log(`Archivo ${glbPath} cargado exitosamente`);
+            // Array para almacenar los modelos cargados
+            let modelsLoaded = 0;
+            let errors = [];
+            let globalOriginUTM = null; // Origen común para todos los modelos
 
-                // Verificar que THREE.GLTFLoader esté disponible
-                if (typeof THREE === 'undefined' || !THREE.GLTFLoader) {
-                    throw new Error('La librería THREE.js o GLTFLoader no está cargada');
-                }
-
-                return new Promise((resolve, reject) => {
-                    const loader = new THREE.GLTFLoader();
-
-                    loader.parse(arrayBuffer, '', function (gltf) {
-                        const model = gltf.scene;
-                        model.name = `Modelo_${index + 1}`; // Asignar nombre único
-
-                        // Calcular el bounding box original DEL MODELO
-                        const bbox = new THREE.Box3().setFromObject(model);
-                        const center = bbox.getCenter(new THREE.Vector3());
-                        const size = bbox.getSize(new THREE.Vector3());
-
-                        console.log(`${glbPath} - Centro original: X=${center.x.toFixed(2)}, Y=${center.y.toFixed(2)}, Z=${center.z.toFixed(2)}`);
-
-                        // Detectar si usa coordenadas UTM (valores grandes)
-                        if (Math.abs(center.x) > 10000 || Math.abs(center.z) > 10000) {
-                            
-                            // Guardar el origen UTM del primer modelo como referencia global
-                            if (index === 0 && globalOriginUTM === null) {
-                                globalOriginUTM = {
-                                    x: Math.round(center.x),
-                                    y: Math.round(center.y),
-                                    z: Math.round(center.z)
-                                };
-                                originUTM3D.x = globalOriginUTM.x;
-                                originUTM3D.y = globalOriginUTM.y;
-                                originUTM3D.z = -globalOriginUTM.z; // Z invertido
-                                hasOrigin3D = true;
-                                console.log('Origen UTM global establecido:', globalOriginUTM);
-                            }
-
-                            // Calcular el offset relativo al origen global
-                            const offsetX = center.x - globalOriginUTM.x;
-                            const offsetY = center.y - globalOriginUTM.y;
-                            const offsetZ = center.z - globalOriginUTM.z;
-
-                            console.log(`${glbPath} - Offset relativo: X=${offsetX.toFixed(2)}, Y=${offsetY.toFixed(2)}, Z=${offsetZ.toFixed(2)}`);
-
-                            // Recentrar el modelo respecto al origen GLOBAL
-                            model.traverse((child) => {
-                                if (child.isMesh && child.geometry) {
-                                    const geometry = child.geometry;
-
-                                    // Aplicar transformación del objeto a la geometría
-                                    child.updateMatrixWorld(true);
-                                    geometry.applyMatrix4(child.matrixWorld);
-
-                                    // Trasladar vértices al origen GLOBAL (no al centro del modelo)
-                                    const positions = geometry.attributes.position;
-                                    for (let i = 0; i < positions.count; i++) {
-                                        positions.setX(i, positions.getX(i) - globalOriginUTM.x);
-                                        positions.setY(i, positions.getY(i) - globalOriginUTM.y);
-                                        positions.setZ(i, positions.getZ(i) - globalOriginUTM.z);
-                                    }
-
-                                    positions.needsUpdate = true;
-                                    geometry.computeBoundingBox();
-                                    geometry.computeBoundingSphere();
-
-                                    // Resetear transformaciones del objeto
-                                    child.position.set(0, 0, 0);
-                                    child.rotation.set(0, 0, 0);
-                                    child.scale.set(1, 1, 1);
-                                    child.updateMatrix();
-                                    child.matrixAutoUpdate = true;
-                                }
-                            });
-
-                            // El modelo ya está en su posición correcta relativa
-                            model.position.set(0, 0, 0);
-                            model.rotation.set(0, 0, 0);
-                            model.scale.set(1, 1, 1);
-
-                        } else {
-                            // Sin coordenadas UTM, mantener posición original
-                            model.position.set(0, 0, 0);
-                            if (index === 0) hasOrigin3D = false;
+            // Función para cargar un modelo individual
+            function loadSingleModel(glbPath, index) {
+                return fetch(glbPath)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
+                        }
+                        return response.arrayBuffer();
+                    })
+                    .then(arrayBuffer => {
+                        // Verificar que el arrayBuffer tenga contenido válido
+                        if (!arrayBuffer || arrayBuffer.byteLength < 20) {
+                            throw new Error(`Archivo inválido o vacío (${arrayBuffer ? arrayBuffer.byteLength : 0} bytes)`);
                         }
 
-                        // Configurar sombras y materiales
-                        model.traverse((child) => {
-                            if (child.isMesh) {
-                                child.castShadow = true;
-                                child.receiveShadow = true;
+                        console.log(`${glbPath} descargado: ${(arrayBuffer.byteLength / 1024).toFixed(2)} KB`);
 
-                                if (child.material) {
-                                    child.material.needsUpdate = true;
-                                    if (child.material.map) {
-                                        child.material.map.encoding = THREE.sRGBEncoding;
+                        // Verificar que THREE.GLTFLoader esté disponible
+                        if (typeof THREE === 'undefined' || !THREE.GLTFLoader) {
+                            throw new Error('La librería THREE.js o GLTFLoader no está cargada');
+                        }
+
+                        return new Promise((resolve, reject) => {
+                            const loader = new THREE.GLTFLoader();
+
+                            // IMPORTANTE: Pasar el path correcto como segundo parámetro
+                            loader.parse(arrayBuffer, 'img/', function (gltf) {
+                                const model = gltf.scene;
+                                model.name = `Modelo_${index + 1}`;
+                                model.userData.modelIndex = index + 1;
+
+                                // Calcular el bounding box original DEL MODELO
+                                const bbox = new THREE.Box3().setFromObject(model);
+                                const center = bbox.getCenter(new THREE.Vector3());
+                                const size = bbox.getSize(new THREE.Vector3());
+
+                                console.log(`Modelo ${index + 1} - Centro: X=${center.x.toFixed(2)}, Y=${center.y.toFixed(2)}, Z=${center.z.toFixed(2)}`);
+
+                                // Detectar si usa coordenadas UTM (valores grandes)
+                                if (Math.abs(center.x) > 10000 || Math.abs(center.z) > 10000) {
+
+                                    // Guardar el origen UTM del primer modelo como referencia global
+                                    if (index === 0 && globalOriginUTM === null) {
+                                        globalOriginUTM = {
+                                            x: Math.round(center.x),
+                                            y: Math.round(center.y),
+                                            z: Math.round(center.z)
+                                        };
+                                        originUTM3D.x = globalOriginUTM.x;
+                                        originUTM3D.y = globalOriginUTM.y;
+                                        originUTM3D.z = -globalOriginUTM.z;
+                                        hasOrigin3D = true;
+                                        console.log('✓ Origen UTM global:', globalOriginUTM);
                                     }
+
+                                    // Calcular el offset relativo al origen global
+                                    const offsetX = center.x - globalOriginUTM.x;
+                                    const offsetY = center.y - globalOriginUTM.y;
+                                    const offsetZ = center.z - globalOriginUTM.z;
+
+                                    // Recentrar el modelo respecto al origen GLOBAL
+                                    model.traverse((child) => {
+                                        if (child.isMesh && child.geometry) {
+                                            const geometry = child.geometry;
+
+                                            // Aplicar transformación del objeto a la geometría
+                                            child.updateMatrixWorld(true);
+                                            geometry.applyMatrix4(child.matrixWorld);
+
+                                            // Trasladar vértices al origen GLOBAL
+                                            const positions = geometry.attributes.position;
+                                            for (let i = 0; i < positions.count; i++) {
+                                                positions.setX(i, positions.getX(i) - globalOriginUTM.x);
+                                                positions.setY(i, positions.getY(i) - globalOriginUTM.y);
+                                                positions.setZ(i, positions.getZ(i) - globalOriginUTM.z);
+                                            }
+
+                                            positions.needsUpdate = true;
+                                            geometry.computeBoundingBox();
+                                            geometry.computeBoundingSphere();
+
+                                            // Resetear transformaciones del objeto
+                                            child.position.set(0, 0, 0);
+                                            child.rotation.set(0, 0, 0);
+                                            child.scale.set(1, 1, 1);
+                                            child.updateMatrix();
+                                            child.matrixAutoUpdate = true;
+                                        }
+                                    });
+
+                                    model.position.set(0, 0, 0);
+                                    model.rotation.set(0, 0, 0);
+                                    model.scale.set(1, 1, 1);
+
+                                } else {
+                                    model.position.set(0, 0, 0);
+                                    if (index === 0) hasOrigin3D = false;
                                 }
-                            }
+
+                                // Configurar sombras y materiales
+                                model.traverse((child) => {
+                                    if (child.isMesh) {
+                                        child.castShadow = true;
+                                        child.receiveShadow = true;
+
+                                        if (child.material) {
+                                            child.material.needsUpdate = true;
+                                            if (child.material.map) {
+                                                child.material.map.encoding = THREE.sRGBEncoding;
+                                            }
+                                        }
+                                    }
+                                });
+
+                                console.log(`✓ Modelo ${index + 1} procesado correctamente`);
+                                resolve(model);
+
+                            }, function (error) {
+                                reject(new Error(`Error en GLTFLoader.parse: ${error.message || error}`));
+                            });
                         });
-
-                        resolve(model);
-
-                    }, function (error) {
-                        reject(error);
+                    })
+                    .catch(error => {
+                        console.error(`✗ Error en ${glbPath}:`, error.message);
+                        errors.push({ path: glbPath, error: error.message, index: index + 1 });
+                        return null;
                     });
+            }
+
+            // Cargar todos los modelos en SECUENCIA
+            async function loadAllModels() {
+                const models = [];
+
+                for (let i = 0; i < glbPaths.length; i++) {
+                    if (loadingText) {
+                        loadingText.textContent = `Cargando modelo ${i + 1} de ${glbPaths.length}...`;
+                    }
+
+                    const model = await loadSingleModel(glbPaths[i], i);
+                    models.push(model);
+
+                    // Pequeña pausa para no saturar el navegador
+                    if (i % 5 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
+                }
+
+                return models;
+            }
+
+            loadAllModels()
+                .then(models => {
+                    // Remover modelos anteriores si existen
+                    if (glbModel3D) {
+                        scene3D.remove(glbModel3D);
+                    }
+
+                    // Crear un grupo para contener todos los modelos
+                    const modelGroup = new THREE.Group();
+                    modelGroup.name = 'ModelosGrupo';
+
+                    // Agregar modelos válidos al grupo
+                    models.forEach(model => {
+                        if (model !== null) {
+                            modelGroup.add(model);
+                            modelsLoaded++;
+                        }
+                    });
+
+                    if (modelsLoaded > 0) {
+                        glbModel3D = modelGroup;
+                        scene3D.add(glbModel3D);
+
+                        // Calcular bounding box del grupo completo
+                        const groupBbox = new THREE.Box3().setFromObject(glbModel3D);
+                        const groupCenter = groupBbox.getCenter(new THREE.Vector3());
+                        const groupSize = groupBbox.getSize(new THREE.Vector3());
+
+                        console.log('═══════════════════════════════════');
+                        console.log(`✓ ${modelsLoaded} modelos cargados correctamente`);
+                        if (errors.length > 0) {
+                            console.log(`✗ ${errors.length} modelos con errores:`);
+                            errors.forEach(err => console.log(`  - Modelo ${err.index}: ${err.error}`));
+                        }
+                        console.log('═══════════════════════════════════');
+
+                        // Posicionar cámara
+                        const maxDim = Math.max(groupSize.x, groupSize.y, groupSize.z);
+                        const fov = camera3D.fov * (Math.PI / 180);
+                        let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                        cameraZ *= 2;
+
+                        camera3D.position.set(groupCenter.x + cameraZ, groupCenter.y + cameraZ / 2, groupCenter.z + cameraZ);
+                        camera3D.lookAt(groupCenter);
+                        controls3D.target.copy(groupCenter);
+                        controls3D.update();
+
+                        if (loadingEl) loadingEl.classList.remove('active');
+
+                        let message = `${modelsLoaded} de ${glbPaths.length} modelos cargados`;
+                        showNotification(message, modelsLoaded > 0 ? 'success' : 'warning');
+
+                        // Procesar lotes en 3D si ya están cargados
+                        if (Object.keys(lotesData).length > 0) {
+                            projectionCache3D = null;
+                            lastModelHash = null;
+
+                            requestAnimationFrame(() => {
+                                console.log('Procesando lotes en 3D después de carga automática...');
+                            });
+                        }
+                    } else {
+                        if (loadingEl) loadingEl.classList.remove('active');
+                        showNotification('No se pudo cargar ningún modelo 3D', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error general en la carga de modelos:', error);
+                    if (loadingEl) loadingEl.classList.remove('active');
+                    showNotification('Error crítico al cargar los modelos 3D', 'error');
                 });
-            })
-            .catch(error => {
-                console.error(`Error al cargar ${glbPath}:`, error);
-                errors.push({ path: glbPath, error: error.message });
-                return null; // Retornar null para continuar con otros modelos
-            });
-    }
-
-    // Cargar todos los modelos en SECUENCIA para establecer el origen correcto
-    async function loadAllModels() {
-        const models = [];
-        
-        for (let i = 0; i < glbPaths.length; i++) {
-            const model = await loadSingleModel(glbPaths[i], i);
-            models.push(model);
         }
-        
-        return models;
-    }
-
-    loadAllModels()
-        .then(models => {
-            // Remover modelos anteriores si existen
-            if (glbModel3D) {
-                scene3D.remove(glbModel3D);
-            }
-
-            // Crear un grupo para contener todos los modelos
-            const modelGroup = new THREE.Group();
-            modelGroup.name = 'ModelosGrupo';
-
-            // Agregar modelos válidos al grupo
-            models.forEach(model => {
-                if (model !== null) {
-                    modelGroup.add(model);
-                    modelsLoaded++;
-                }
-            });
-
-            if (modelsLoaded > 0) {
-                glbModel3D = modelGroup;
-                scene3D.add(glbModel3D);
-
-                // Calcular bounding box del grupo completo
-                const groupBbox = new THREE.Box3().setFromObject(glbModel3D);
-                const groupCenter = groupBbox.getCenter(new THREE.Vector3());
-                const groupSize = groupBbox.getSize(new THREE.Vector3());
-
-                console.log('Bounding box del grupo completo:');
-                console.log(`  Centro: X=${groupCenter.x.toFixed(2)}, Y=${groupCenter.y.toFixed(2)}, Z=${groupCenter.z.toFixed(2)}`);
-                console.log(`  Tamaño: X=${groupSize.x.toFixed(2)}, Y=${groupSize.y.toFixed(2)}, Z=${groupSize.z.toFixed(2)}`);
-
-                // Posicionar cámara
-                const maxDim = Math.max(groupSize.x, groupSize.y, groupSize.z);
-                const fov = camera3D.fov * (Math.PI / 180);
-                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-                cameraZ *= 2;
-
-                camera3D.position.set(groupCenter.x + cameraZ, groupCenter.y + cameraZ / 2, groupCenter.z + cameraZ);
-                camera3D.lookAt(groupCenter);
-                controls3D.target.copy(groupCenter);
-                controls3D.update();
-
-                if (loadingEl) loadingEl.classList.remove('active');
-                
-                let message = `${modelsLoaded} modelo(s) 3D cargado(s) exitosamente`;
-                if (errors.length > 0) {
-                    message += `. ${errors.length} modelo(s) no se pudieron cargar`;
-                }
-                showNotification(message, modelsLoaded > 0 ? 'success' : 'warning');
-
-                // Mostrar errores específicos en consola
-                if (errors.length > 0) {
-                    console.warn('Errores al cargar modelos:');
-                    errors.forEach(err => console.warn(`- ${err.path}: ${err.error}`));
-                }
-
-                // Procesar lotes en 3D si ya están cargados
-                if (Object.keys(lotesData).length > 0) {
-                    projectionCache3D = null;
-                    lastModelHash = null;
-
-                    requestAnimationFrame(() => {
-                        console.log('Procesando lotes en 3D después de carga automática...');
-                    });
-                }
-            } else {
-                if (loadingEl) loadingEl.classList.remove('active');
-                showNotification('No se pudo cargar ningún modelo 3D', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error general en la carga de modelos:', error);
-            if (loadingEl) loadingEl.classList.remove('active');
-            showNotification('Error crítico al cargar los modelos 3D', 'error');
-        });
-}
 
 
         function processExcelFileAutomatic() {
@@ -2472,7 +2443,7 @@ function loadDefaultGLB() {
             const canvas = document.getElementById('canvas-3d');
 
             scene3D = new THREE.Scene();
-            scene3D.background = new THREE.Color(0x87ceeb);
+            scene3D.background = new THREE.Color(0x1a1a2e);
 
             camera3D = new THREE.PerspectiveCamera(
                 60,
@@ -3464,136 +3435,6 @@ function loadDefaultGLB() {
             }, 500);
         }
 
-        function createTextOverlay(textEntity, coordSystem, utmZone, hemisphere, refLat, refLng, scale) {
-            if (!textEntity.text || !textEntity.position) {
-                return null;
-            }
-
-            const text = textEntity.text.replace(/\\P/g, '\n').replace(/%%[d,u]/g, '');
-
-            let geometricCenterDxf;
-            const halign = textEntity.halign || 0;
-            const valign = textEntity.valign || 0;
-
-            if (halign === 1 && (valign === 2 || valign === 1)) {
-                geometricCenterDxf = { x: textEntity.position.x, y: textEntity.position.y };
-            }
-            else if (textEntity.position2) {
-                geometricCenterDxf = {
-                    x: (textEntity.position.x + textEntity.position2.x) / 2,
-                    y: (textEntity.position.y + textEntity.position2.y) / 2
-                };
-            }
-            else {
-                console.warn('Texto sin punto de alineación, usando punto de inserción como centro:', textEntity.text);
-                geometricCenterDxf = { x: textEntity.position.x, y: textEntity.position.y };
-            }
-
-            const position = convertDXFToLatLng(geometricCenterDxf, coordSystem, utmZone, hemisphere, refLat, refLng, scale);
-
-            const canvasFontSize = 64;
-            const color = getColorFromDXF(textEntity.color);
-            const dxfTextHeight = textEntity.height || 2.0;
-            const dxfUnitsToMeters = 1.5;
-            const realWorldHeight = dxfTextHeight * dxfUnitsToMeters;
-            const rotationInRadians = -(textEntity.rotation || 0) * Math.PI / 180;
-
-            const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.font = `bold ${canvasFontSize}px Arial`;
-            tempCtx.textAlign = 'center';
-            tempCtx.textBaseline = 'middle';
-
-            const lines = text.split('\n');
-            let maxWidth = 0;
-            lines.forEach(line => {
-                const metrics = tempCtx.measureText(line);
-                maxWidth = Math.max(maxWidth, metrics.width);
-            });
-            const lineHeight = canvasFontSize * 1.2;
-            const textHeight = lines.length * lineHeight;
-
-            const realWorldWidth = (maxWidth / textHeight) * realWorldHeight;
-            const halfWidth = realWorldWidth / 2;
-            const halfHeight = realWorldHeight / 2;
-
-            const localCorners = [
-                { x: -halfWidth, y: -halfHeight },
-                { x: halfWidth, y: -halfHeight },
-                { x: halfWidth, y: halfHeight },
-                { x: -halfWidth, y: halfHeight }
-            ];
-
-            const cos = Math.cos(rotationInRadians);
-            const sin = Math.sin(rotationInRadians);
-            const rotatedLocalCorners = localCorners.map(corner => ({
-                x: corner.x * cos - corner.y * sin,
-                y: corner.x * sin + corner.y * cos
-            }));
-
-            const metersPerDegreeLat = 111320;
-            const metersPerDegreeLng = metersPerDegreeLat * Math.cos(position[0] * Math.PI / 180);
-
-            const geoCorners = rotatedLocalCorners.map(corner => {
-                const latOffset = corner.y / metersPerDegreeLat;
-                const lngOffset = corner.x / metersPerDegreeLng;
-                return [position[0] + latOffset, position[1] + lngOffset];
-            });
-
-            const bounds = L.latLngBounds(geoCorners);
-
-            const unrotatedWidth = maxWidth;
-            const unrotatedHeight = textHeight;
-            const cornersForCanvas = [
-                { x: -unrotatedWidth / 2, y: -unrotatedHeight / 2 },
-                { x: unrotatedWidth / 2, y: -unrotatedHeight / 2 },
-                { x: unrotatedWidth / 2, y: unrotatedHeight / 2 },
-                { x: -unrotatedWidth / 2, y: unrotatedHeight / 2 }
-            ];
-
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            cornersForCanvas.forEach(corner => {
-                const rotatedX = corner.x * cos - corner.y * sin;
-                const rotatedY = corner.x * sin + corner.y * cos;
-                minX = Math.min(minX, rotatedX);
-                minY = Math.min(minY, rotatedY);
-                maxX = Math.max(maxX, rotatedX);
-                maxY = Math.max(maxY, rotatedY);
-            });
-
-            const finalCanvasWidth = Math.ceil(maxX - minX);
-            const finalCanvasHeight = Math.ceil(maxY - minY);
-
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = finalCanvasWidth;
-            canvas.height = finalCanvasHeight;
-
-            ctx.font = `bold ${canvasFontSize}px Arial`;
-            ctx.fillStyle = color;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            ctx.save();
-            ctx.translate(finalCanvasWidth / 2, finalCanvasHeight / 2);
-            ctx.rotate(rotationInRadians);
-
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-            ctx.shadowBlur = 4;
-            ctx.lineWidth = 5;
-            ctx.strokeStyle = 'white';
-            ctx.strokeText(text, 0, 0);
-            ctx.fillText(text, 0, 0);
-            ctx.restore();
-
-            const imageUrl = canvas.toDataURL('image/png');
-
-            return L.imageOverlay(imageUrl, bounds, {
-                interactive: false,
-                zIndex: 250
-            });
-        }
-
         function processDXF(dxf) {
             dxfLayer.clearLayers();
             lotesLayer.clearLayers();
@@ -3706,8 +3547,8 @@ function loadDefaultGLB() {
                                     manzano: manzanoLetra,
                                     loteNumero: loteNumero,
                                     points: points,
-                                    bulges: entity.bulges || [],  // Asegurarse de guardar los bulges
-                                    closed: entity.closed,        // Asegurarse de guardar si está cerrado
+                                    bulges: entity.bulges || [],
+                                    closed: entity.closed,
                                     status: status,
                                     price: 0
                                 };
@@ -3719,6 +3560,12 @@ function loadDefaultGLB() {
                                 polygon.bringToFront();
                                 polygon.on('click', () => selectLote(name));
                             }
+
+                            // MODIFICADO: Solo calcular bounds para manzanos y lotes
+                            points.forEach(point => {
+                                if (!bounds) bounds = L.latLngBounds([point]);
+                                else bounds.extend(point);
+                            });
                         } else {
                             const polyline = L.polyline(points, {
                                 color: color,
@@ -3727,12 +3574,9 @@ function loadDefaultGLB() {
                             });
 
                             polyline.addTo(dxfLayer);
-                        }
 
-                        points.forEach(point => {
-                            if (!bounds) bounds = L.latLngBounds([point]);
-                            else bounds.extend(point);
-                        });
+                            // MODIFICADO: No incluir otras polilíneas en el cálculo de bounds
+                        }
                     } else if (entity.type === 'LINE') {
                         if (!entity.vertices || entity.vertices.length < 2) return;
 
@@ -3750,10 +3594,7 @@ function loadDefaultGLB() {
 
                         line.addTo(dxfLayer);
 
-                        [p1, p2].forEach(point => {
-                            if (!bounds) bounds = L.latLngBounds([point]);
-                            else bounds.extend(point);
-                        });
+                        // MODIFICADO: No incluir líneas en el cálculo de bounds
                     } else if (entity.type === 'TEXT' || entity.type === 'MTEXT') {
                         if (!entity.position) return;
 
@@ -3765,11 +3606,11 @@ function loadDefaultGLB() {
                         const textOverlay = createTextOverlay(entity, coordSystem, utmZone, hemisphere, refLat, refLng, scale);
 
                         if (textOverlay) {
+                            console.log('🟢 AÑADIENDO TEXTO AL MAPA:', text); // ⬅️ AGREGAR ESTE LOG
                             textOverlay.addTo(dxfLayer);
-
-                            const overlayBounds = textOverlay.getBounds();
-                            if (!bounds) bounds = overlayBounds;
-                            else bounds.extend(overlayBounds);
+                            console.log('✅ TEXTO AÑADIDO:', text); // ⬅️ AGREGAR ESTE LOG
+                        } else {
+                            console.error('❌ textOverlay es NULL para:', text);
                         }
                     } else if (entity.type === 'CIRCLE') {
                         if (entity.x === undefined || entity.y === undefined || entity.radius === undefined) return;
@@ -3789,8 +3630,7 @@ function loadDefaultGLB() {
 
                         circle.addTo(dxfLayer);
 
-                        if (!bounds) bounds = L.latLngBounds([center]);
-                        else bounds.extend(center);
+                        // MODIFICADO: No incluir círculos en el cálculo de bounds
                     } else if (entity.type === 'ARC') {
                         if (entity.x === undefined || entity.y === undefined || entity.radius === undefined) return;
 
@@ -3818,10 +3658,7 @@ function loadDefaultGLB() {
 
                         arc.addTo(dxfLayer);
 
-                        points.forEach(point => {
-                            if (!bounds) bounds = L.latLngBounds([point]);
-                            else bounds.extend(point);
-                        });
+                        // MODIFICADO: No incluir arcos en el cálculo de bounds
                     }
                 } catch (err) {
                     console.warn('Error procesando entidad:', err);
@@ -3860,13 +3697,7 @@ function loadDefaultGLB() {
                 }
             }, 100);
 
-            setTimeout(() => {
-                const sidebarContent = document.getElementById('sidebar-content');
-                const scrollIndicator = document.getElementById('scroll-indicator');
-                if (sidebarContent.scrollHeight > sidebarContent.clientHeight) {
-                    scrollIndicator.classList.add('visible');
-                }
-            }, 100);
+            // ELIMINADO: Bloque duplicado del scroll indicator
 
             // Guardar entidades de texto para usarlas en 3D
             if (!window.textEntities3D) {
@@ -3885,10 +3716,208 @@ function loadDefaultGLB() {
                     window.textEntities3D.push(entity);
                 }
             });
+
             // Si la vista 3D está activa, procesar los lotes en 3D
             if (is3DViewActive) {
                 processLotesIn3D();
             }
+        }
+
+        function createTextOverlay(textEntity, coordSystem, utmZone, hemisphere, refLat, refLng, scale) {
+            if (!textEntity.text || !textEntity.position) {
+                console.warn('Entidad de texto sin texto o posición:', textEntity);
+                return null;
+            }
+
+            const text = textEntity.text.replace(/\\P/g, '\n').replace(/%%[d,u]/g, '').replace(/\\[A-Za-z]+;/g, '');
+
+            // Determinar el centro geométrico basado en los puntos de alineación
+            let geometricCenterDxf;
+            const halign = textEntity.halign || 0;
+            const valign = textEntity.valign || 0;
+
+            // Si tiene punto de alineación secundario (position2), usarlo para calcular el centro
+            if (textEntity.position2 &&
+                textEntity.position2.x !== undefined &&
+                textEntity.position2.y !== undefined &&
+                (textEntity.position2.x !== 0 || textEntity.position2.y !== 0)) {
+
+                // Si halign y valign indican alineación centrada, usar position2 directamente
+                if ((halign === 1 || halign === 4) && (valign === 1 || valign === 2)) {
+                    geometricCenterDxf = {
+                        x: textEntity.position2.x,
+                        y: textEntity.position2.y
+                    };
+                } else {
+                    // Calcular el punto medio entre position y position2
+                    geometricCenterDxf = {
+                        x: (textEntity.position.x + textEntity.position2.x) / 2,
+                        y: (textEntity.position.y + textEntity.position2.y) / 2
+                    };
+                }
+            }
+            // Si halign indica centro (1) o medio (4), y valign indica medio (2) o base (1)
+            else if (halign === 1 && (valign === 2 || valign === 1)) {
+                geometricCenterDxf = {
+                    x: textEntity.position.x,
+                    y: textEntity.position.y
+                };
+            }
+            // Para textos sin alineación especial (como nombres de calles), usar position directamente
+            else {
+                geometricCenterDxf = {
+                    x: textEntity.position.x,
+                    y: textEntity.position.y
+                };
+            }
+
+            // Convertir coordenadas DXF a LatLng
+            const position = convertDXFToLatLng(
+                geometricCenterDxf,
+                coordSystem,
+                utmZone,
+                hemisphere,
+                refLat,
+                refLng,
+                scale
+            );
+
+            // Verificar que la posición sea válida
+            if (!position || isNaN(position[0]) || isNaN(position[1])) {
+                console.error('Error: Posición inválida para texto:', text, position);
+                return null;
+            }
+
+            // Verificar que las coordenadas estén en rangos razonables
+            if (Math.abs(position[0]) > 90 || Math.abs(position[1]) > 180) {
+                console.error('Error: Coordenadas fuera de rango para texto:', text, position);
+                return null;
+            }
+
+            const canvasFontSize = 64;
+            const color = getColorFromDXF(textEntity.color);
+            const dxfTextHeight = textEntity.height || 2.0;
+            const dxfUnitsToMeters = 1.5;
+            const realWorldHeight = dxfTextHeight * dxfUnitsToMeters;
+            const rotationInRadians = -(textEntity.rotation || 0) * Math.PI / 180;
+
+            // Crear canvas temporal para medir texto
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.font = `bold ${canvasFontSize}px Arial`;
+            tempCtx.textAlign = 'center';
+            tempCtx.textBaseline = 'middle';
+
+            const lines = text.split('\n');
+            let maxWidth = 0;
+            lines.forEach(line => {
+                const metrics = tempCtx.measureText(line);
+                maxWidth = Math.max(maxWidth, metrics.width);
+            });
+            const lineHeight = canvasFontSize * 1.2;
+            const textHeight = lines.length * lineHeight;
+
+            // Calcular dimensiones reales
+            const realWorldWidth = (maxWidth / textHeight) * realWorldHeight;
+            const halfWidth = realWorldWidth / 2;
+            const halfHeight = realWorldHeight / 2;
+
+            // Calcular esquinas locales
+            const localCorners = [
+                { x: -halfWidth, y: -halfHeight },
+                { x: halfWidth, y: -halfHeight },
+                { x: halfWidth, y: halfHeight },
+                { x: -halfWidth, y: halfHeight }
+            ];
+
+            // Aplicar rotación
+            const cos = Math.cos(rotationInRadians);
+            const sin = Math.sin(rotationInRadians);
+            const rotatedLocalCorners = localCorners.map(corner => ({
+                x: corner.x * cos - corner.y * sin,
+                y: corner.x * sin + corner.y * cos
+            }));
+
+            // Convertir a coordenadas geográficas
+            const metersPerDegreeLat = 111320;
+            const metersPerDegreeLng = metersPerDegreeLat * Math.cos(position[0] * Math.PI / 180);
+
+            const geoCorners = rotatedLocalCorners.map(corner => {
+                const latOffset = corner.y / metersPerDegreeLat;
+                const lngOffset = corner.x / metersPerDegreeLng;
+                return [position[0] + latOffset, position[1] + lngOffset];
+            });
+
+            const bounds = L.latLngBounds(geoCorners);
+
+            // Crear canvas para el texto
+            const unrotatedWidth = maxWidth;
+            const unrotatedHeight = textHeight;
+            const cornersForCanvas = [
+                { x: -unrotatedWidth / 2, y: -unrotatedHeight / 2 },
+                { x: unrotatedWidth / 2, y: -unrotatedHeight / 2 },
+                { x: unrotatedWidth / 2, y: unrotatedHeight / 2 },
+                { x: -unrotatedWidth / 2, y: unrotatedHeight / 2 }
+            ];
+
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            cornersForCanvas.forEach(corner => {
+                const rotatedX = corner.x * cos - corner.y * sin;
+                const rotatedY = corner.x * sin + corner.y * cos;
+                minX = Math.min(minX, rotatedX);
+                minY = Math.min(minY, rotatedY);
+                maxX = Math.max(maxX, rotatedX);
+                maxY = Math.max(maxY, rotatedY);
+            });
+
+            const finalCanvasWidth = Math.ceil(maxX - minX);
+            const finalCanvasHeight = Math.ceil(maxY - minY);
+
+            // Verificar dimensiones válidas
+            if (finalCanvasWidth <= 0 || finalCanvasHeight <= 0) {
+                console.error('Error: Dimensiones de canvas inválidas para texto:', text);
+                return null;
+            }
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = finalCanvasWidth;
+            canvas.height = finalCanvasHeight;
+
+            ctx.font = `bold ${canvasFontSize}px Arial`;
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.save();
+            ctx.translate(finalCanvasWidth / 2, finalCanvasHeight / 2);
+            ctx.rotate(rotationInRadians);
+
+            // Dibujar sombra y texto
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            ctx.shadowBlur = 4;
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = 'white';
+
+            // Dibujar cada línea de texto
+            const totalTextHeight = lines.length * lineHeight;
+            const startY = -(totalTextHeight / 2) + (lineHeight / 2);
+
+            lines.forEach((line, index) => {
+                const y = startY + (index * lineHeight);
+                ctx.strokeText(line, 0, y);
+                ctx.fillText(line, 0, y);
+            });
+
+            ctx.restore();
+
+            const imageUrl = canvas.toDataURL('image/png');
+            
+
+            return L.imageOverlay(imageUrl, bounds, {
+                interactive: false,
+                zIndex: 250
+            });
         }
 
         function processLotesIn3D() {
@@ -5266,9 +5295,3 @@ function loadDefaultGLB() {
 </body>
 
 </html>
-
-
-
-
-
-
