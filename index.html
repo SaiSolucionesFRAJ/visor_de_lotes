@@ -538,6 +538,36 @@
             height: 100%;
         }
 
+        /* Tooltip para áreas especiales */
+        .area-tooltip {
+            background: rgba(0, 0, 0, 0.8) !important;
+            border: none !important;
+            border-radius: 4px !important;
+            color: white !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            padding: 4px 8px !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        /* Deshabilitar interacción con áreas verdes y viales */
+        .leaflet-interactive[style*="fill: rgb(76, 175, 80)"],
+        .leaflet-interactive[style*="fill: rgb(120, 144, 156)"] {
+            pointer-events: none !important;
+            cursor: default !important;
+        }
+
+        /* Clase para áreas no interactivas */
+        .non-interactive-area {
+            pointer-events: none !important;
+            cursor: default !important;
+        }
+
+        /* Asegurar que los paths dentro tampoco sean interactivos */
+        .non-interactive-area path {
+            pointer-events: none !important;
+        }
+
         .north-arrow {
             position: absolute;
             top: 12px;
@@ -1863,7 +1893,7 @@
             if (loadingText) loadingText.textContent = 'Cargando plano urbanización...';
 
             // Intentar cargar el archivo DXF
-            const dxfPath = 'img/VISOR.dxf';
+            const dxfPath = 'img/dxf/VISOR.dxf';
 
             // Añadir manejo de errores más específico
             fetch(dxfPath)
@@ -1928,7 +1958,7 @@
                     let errorMessage = 'No se pudo cargar el archivo DXF. ';
 
                     if (error.message.includes('HTTP')) {
-                        errorMessage += 'Verifica que el archivo existe en img/VISOR.dxf';
+                        errorMessage += 'Verifica que el archivo existe en img/dxf/VISOR.dxf';
                     } else if (error.message.includes('Parser')) {
                         errorMessage += 'Asegúrate de que la librería DXF Parser está incluida.';
                     } else if (error.message.includes('válidos')) {
@@ -2414,7 +2444,7 @@
 
             manzanosLayer.setZIndex(100);
             lotesLayer.setZIndex(200);
-            dxfLayer.setZIndex(150);
+            dxfLayer.setZIndex(50);  // Cambiar a z-index más bajo para que esté debajo
 
             document.querySelectorAll('.view-button').forEach(button => {
                 button.addEventListener('click', function () {
@@ -3494,14 +3524,47 @@
                         const layerName = (entity.layer || '').toUpperCase();
                         const isManzano = layerName.startsWith('MZ.') || layerName.startsWith('MZNO') || layerName.includes('MANZANO');
                         const isLote = layerName.startsWith('LOTE ');
+                        const isAreaVerde = layerName.includes('AREA VERDE');
+                        const isAreaVial = layerName.includes('AREA VIAL');
 
-                        if (isManzano || isLote) {
-                            const polygon = L.polygon(points, {
-                                color: isManzano ? '#4285F4' : '#8B4513',
+                        if (isManzano || isLote || isAreaVerde || isAreaVial) {
+                            // Determinar color y opacidad según tipo de área
+                            let polygonColor = '#8B4513';
+                            let polygonFillOpacity = 0.3;
+                            let polygonFillColor = null;
+
+                            if (isManzano) {
+                                polygonColor = '#4285F4';
+                                polygonFillOpacity = 0;
+                            } else if (isAreaVerde) {
+                                polygonColor = '#2d7a2d';  // Verde oscuro para el borde
+                                polygonFillColor = '#4CAF50';  // Verde para el relleno
+                                polygonFillOpacity = 1;
+                            } else if (isAreaVial) {
+                                polygonColor = '#424242';  // Gris oscuro para el borde
+                                polygonFillColor = '#78909C';  // Gris pavimento para el relleno
+                                polygonFillOpacity = 1;
+                            }
+
+                            const polygonOptions = {
+                                color: polygonColor,
                                 weight: lineWeight,
-                                fillOpacity: isManzano ? 0 : 0.3,
+                                fillOpacity: polygonFillOpacity,
                                 smoothFactor: 0
-                            });
+                            };
+
+                            // Agregar fillColor si está definido
+                            if (polygonFillColor) {
+                                polygonOptions.fillColor = polygonFillColor;
+                            }
+
+                            // Agregar clase CSS para áreas no interactivas
+                            if (isAreaVerde || isAreaVial) {
+                                polygonOptions.className = 'non-interactive-area';
+                                polygonOptions.interactive = false;
+                            }
+
+                            const polygon = L.polygon(points, polygonOptions);
 
                             let name = '';
                             if (isManzano) {
@@ -3521,6 +3584,7 @@
                                 polygon.addTo(manzanosLayer);
                                 polygon.options.interactive = false;
                                 polygon.on('click', () => selectManzano(name));
+
                             } else if (isLote) {
                                 const loteParts = layerName.replace('LOTE ', '').split(' ');
                                 const manzanoLetra = loteParts[0];
@@ -3548,7 +3612,6 @@
                                     loteNumero: loteNumero,
                                     points: points,
                                     bulges: entity.bulges || [],
-                                    closed: entity.closed,
                                     status: status,
                                     price: 0
                                 };
@@ -3559,6 +3622,18 @@
                                 polygon.options.loteName = name;
                                 polygon.bringToFront();
                                 polygon.on('click', () => selectLote(name));
+
+                            } else if (isAreaVerde || isAreaVial) {
+                                // Áreas especiales (verdes y viales) - completamente no interactivas
+                                polygon.options.interactive = false;
+                                polygon.options.bubblingMouseEvents = false;
+
+                                // Deshabilitar todos los eventos de mouse
+                                polygon.off();
+
+                                polygon.addTo(dxfLayer);
+
+                                // NO agregar tooltip para evitar cualquier interacción
                             }
 
                             // MODIFICADO: Solo calcular bounds para manzanos y lotes
@@ -3912,7 +3987,7 @@
             ctx.restore();
 
             const imageUrl = canvas.toDataURL('image/png');
-            
+
 
             return L.imageOverlay(imageUrl, bounds, {
                 interactive: false,
@@ -5055,7 +5130,7 @@
             if (!vertices || vertices.length === 0) return [];
 
             const expandedVertices = [];
-            const segments = 16;
+            const segments = 32;
 
             for (let i = 0; i < vertices.length; i++) {
                 const v1 = vertices[i];
@@ -5065,34 +5140,68 @@
                 expandedVertices.push(v1);
 
                 if (Math.abs(bulge) > 0.0001) {
-                    const includedAngle = 4 * Math.atan(bulge);
                     const dx = v2.x - v1.x;
                     const dy = v2.y - v1.y;
                     const chordLength = Math.sqrt(dx * dx + dy * dy);
 
                     if (chordLength > 0.0001) {
-                        const radius = chordLength / (2 * Math.sin(includedAngle / 2));
-                        const chordAngle = Math.atan2(dy, dx);
-                        const centerAngle = (Math.PI / 2 - includedAngle / 2) + chordAngle;
-                        const centerX = v1.x + radius * Math.cos(centerAngle);
-                        const centerY = v1.y + radius * Math.sin(centerAngle);
+                        // Calcular el ángulo incluido
+                        const includedAngle = 4 * Math.atan(bulge);
 
+                        // Radio del arco usando la fórmula correcta
+                        const radius = chordLength / (2 * Math.sin(Math.abs(includedAngle) / 2));
+
+                        // Punto medio de la cuerda
+                        const chordMidX = (v1.x + v2.x) / 2;
+                        const chordMidY = (v1.y + v2.y) / 2;
+
+                        // Ángulo de la cuerda
+                        const chordAngle = Math.atan2(dy, dx);
+
+                        // Distancia del centro al punto medio de la cuerda (altura h)
+                        const h = Math.sqrt(radius * radius - (chordLength / 2) * (chordLength / 2));
+
+                        // Ángulo perpendicular
+                        const perpAngle = chordAngle + Math.PI / 2;
+
+                        // Centro del arco - ajustar según signo del bulge
+                        const centerX = chordMidX + h * Math.cos(perpAngle) * Math.sign(bulge);
+                        const centerY = chordMidY + h * Math.sin(perpAngle) * Math.sign(bulge);
+
+                        // Calcular ángulos
                         let startAngle = Math.atan2(v1.y - centerY, v1.x - centerX);
                         let endAngle = Math.atan2(v2.y - centerY, v2.x - centerX);
 
+                        // Normalizar ángulos
+                        const normalizeAngle = (angle) => {
+                            while (angle > Math.PI) angle -= 2 * Math.PI;
+                            while (angle < -Math.PI) angle += 2 * Math.PI;
+                            return angle;
+                        };
+
+                        startAngle = normalizeAngle(startAngle);
+                        endAngle = normalizeAngle(endAngle);
+
+                        // Determinar dirección basado en bulge
                         if (bulge > 0) {
-                            if (endAngle <= startAngle) endAngle += 2 * Math.PI;
+                            // Antihorario
+                            if (endAngle <= startAngle) {
+                                endAngle += 2 * Math.PI;
+                            }
                         } else {
-                            if (startAngle <= endAngle) startAngle += 2 * Math.PI;
-                            [startAngle, endAngle] = [endAngle, startAngle];
+                            // Horario
+                            if (endAngle >= startAngle) {
+                                endAngle -= 2 * Math.PI;
+                            }
                         }
 
+                        // Generar puntos intermedios
                         const angleStep = (endAngle - startAngle) / segments;
 
                         for (let j = 1; j < segments; j++) {
                             const angle = startAngle + angleStep * j;
-                            const x = centerX + Math.abs(radius) * Math.cos(angle);
-                            const y = centerY + Math.abs(radius) * Math.sin(angle);
+                            const x = centerX + radius * Math.cos(angle);
+                            const y = centerY + radius * Math.sin(angle);
                             expandedVertices.push({ x: x, y: y });
                         }
                     }
@@ -5231,35 +5340,69 @@
             const points = [];
             if (Math.abs(bulge) < 0.00001) return points;
 
-            const includedAngle = 4 * Math.atan(bulge);
             const dx = v2.x - v1.x;
             const dy = v2.y - v1.y;
             const chordLength = Math.sqrt(dx * dx + dy * dy);
 
             if (chordLength < 0.0001) return points;
 
-            const radius = chordLength / (2 * Math.sin(includedAngle / 2));
-            const chordAngle = Math.atan2(dy, dx);
-            const centerAngle = (Math.PI / 2 - includedAngle / 2) + chordAngle;
-            const centerX = v1.x + radius * Math.cos(centerAngle);
-            const centerY = v1.y + radius * Math.sin(centerAngle);
+            // Calcular el ángulo incluido correctamente
+            const includedAngle = 4 * Math.atan(bulge);
 
+            // Radio del arco usando la fórmula correcta
+            const radius = chordLength / (2 * Math.sin(Math.abs(includedAngle) / 2));
+
+            // Punto medio de la cuerda
+            const chordMidX = (v1.x + v2.x) / 2;
+            const chordMidY = (v1.y + v2.y) / 2;
+
+            // Ángulo de la cuerda
+            const chordAngle = Math.atan2(dy, dx);
+
+            // Distancia del centro al punto medio de la cuerda
+            const h = Math.sqrt(radius * radius - (chordLength / 2) * (chordLength / 2));
+
+            // Ángulo perpendicular a la cuerda
+            const perpAngle = chordAngle + Math.PI / 2;
+
+            // Centro del arco - ajustar según el signo del bulge
+            const centerX = chordMidX + h * Math.cos(perpAngle) * Math.sign(bulge);
+            const centerY = chordMidY + h * Math.sin(perpAngle) * Math.sign(bulge);
+
+            // Calcular ángulos inicial y final desde el centro
             let startAngle = Math.atan2(v1.y - centerY, v1.x - centerX);
             let endAngle = Math.atan2(v2.y - centerY, v2.x - centerX);
 
+            // Normalizar ángulos entre -PI y PI
+            const normalizeAngle = (angle) => {
+                while (angle > Math.PI) angle -= 2 * Math.PI;
+                while (angle < -Math.PI) angle += 2 * Math.PI;
+                return angle;
+            };
+
+            startAngle = normalizeAngle(startAngle);
+            endAngle = normalizeAngle(endAngle);
+
+            // Determinar dirección del arco basado en el bulge
             if (bulge > 0) {
-                if (endAngle <= startAngle) endAngle += 2 * Math.PI;
+                // Sentido antihorario
+                if (endAngle <= startAngle) {
+                    endAngle += 2 * Math.PI;
+                }
             } else {
-                if (startAngle <= endAngle) startAngle += 2 * Math.PI;
-                [startAngle, endAngle] = [endAngle, startAngle];
+                // Sentido horario
+                if (endAngle >= startAngle) {
+                    endAngle -= 2 * Math.PI;
+                }
             }
 
+            // Generar puntos del arco
             const angleStep = (endAngle - startAngle) / segments;
 
             for (let i = 1; i < segments; i++) {
                 const angle = startAngle + angleStep * i;
-                const x = centerX + Math.abs(radius) * Math.cos(angle);
-                const y = centerY + Math.abs(radius) * Math.sin(angle);
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
                 points.push(convertDXFToLatLng({ x, y }, coordSystem, utmZone, hemisphere, refLat, refLng, scale));
             }
 
@@ -5295,3 +5438,4 @@
 </body>
 
 </html>
+
